@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Become a Brilliant Plus Ambassador</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCvFnRxrxBTXAaOa4njvLSAubLxkJM0tbA&libraries=places"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <button class="close-button">×</button>
+            <div class="two-column-layout">
+                <div class="content-column">
+                    <div class="form-header">
+                        <h1>Become a Brilliant Plus ambassador today</h1>
+                        <p class="subtitle">Already an ambassador? <a href="#" class="highlight-link">Sign in to your dashboard</a></p>
+                    </div>
+                    <!-- Step indicator -->
+                    <div class="step-indicator">
+                        <div class="step active" data-step="1">
+                            <span class="step-number">1</span>
+                            <span class="step-text">Basic Info</span>
+                        </div>
+                        <div class="step-line"></div>
+                        <div class="step" data-step="2">
+                            <span class="step-number">2</span>
+                            <span class="step-text">Account Setup</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-column">
+                    <!-- Step 1: Basic Information -->
+                    <form id="contactForm" class="form step-form" data-step="1" novalidate>
+                        <div class="form-row">
+                            <div class="form-group half">
+                                <label for="firstName">First Name</label>
+                                <input type="text" id="firstName" name="firstName" required 
+                                       pattern="^[a-zA-Z]+$"
+                                       title="Please enter your first name">
+                            </div>
+                            <div class="form-group half">
+                                <label for="lastName">Last Name</label>
+                                <input type="text" id="lastName" name="lastName" required 
+                                       pattern="^[a-zA-Z]+$"
+                                       title="Please enter your last name">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" name="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="phone">Phone Number</label>
+                            <input type="tel" id="phone" name="phone" required
+                                   pattern="^\+?[1-9]\d{1,14}$"
+                                   title="Please enter a valid phone number">
+                        </div>
+                        <div class="form-group">
+                            <label for="street1">Street Address</label>
+                            <input type="text" id="street1" name="street1" required autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="street2">Apartment/Suite (Optional)</label>
+                            <input type="text" id="street2" name="street2" autocomplete="off">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group half">
+                                <label for="city">City</label>
+                                <input type="text" id="city" name="city" required>
+                            </div>
+                            <div class="form-group half">
+                                <label for="postalCode">Postal Code</label>
+                                <input type="text" id="postalCode" name="postalCode" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group half">
+                                <label for="country">Country</label>
+                                <input type="text" id="country" name="country" required>
+                            </div>
+                            <div class="form-group half">
+                                <label for="province">State/Province</label>
+                                <input type="text" id="province" name="province" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="ssn">Social Security Number (for 1099 Tax Form)</label>
+                            <div class="password-input-group">
+                                <input type="password" id="ssn" name="ssn" required 
+                                       pattern="^\d{3}-\d{2}-\d{4}$"
+                                       placeholder="XXX-XX-XXXX"
+                                       maxlength="11"
+                                       autocomplete="off">
+                                <button type="button" class="toggle-password" aria-label="Toggle SSN visibility">
+                                    <svg class="eye-icon" viewBox="0 0 24 24" width="24" height="24">
+                                        <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            <p class="field-hint">Your SSN is required for tax reporting purposes. As a Brilliant Plus ambassador, you'll receive a 1099 form at the end of the year for any earnings over $600. This information is securely stored and encrypted.</p>
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="terms" name="terms" required>
+                                <div class="checkbox-custom"></div>
+                                <div class="checkbox-text">I agree to the <button type="button" class="terms-link" onclick="openModal()">Terms of Service</button></div>
+                            </label>
+                        </div>
+                        <button type="submit" class="submit-button">Continue to Account Setup</button>
+                        <p class="disclaimer">By submitting this form, you agree to receive promotional messages from Brilliant Plus about its products and services. You can unsubscribe at any time by clicking on the link at the bottom of our emails.</p>
+                    </form>
+
+                    <!-- Step 2: Account Setup -->
+                    <form id="accountSetupForm" class="form step-form" data-step="2" style="display: none;" novalidate>
+                        <div class="form-group">
+                            <label for="username">Username</label>
+                            <input type="text" id="username" name="username" class="username-field" readonly>
+                            <p class="field-hint">Your username is automatically generated based on your email</p>
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Create Password</label>
+                            <div class="password-input-group">
+                                <input type="password" id="password" name="password" required
+                                       pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
+                                       autocomplete="new-password">
+                                <button type="button" class="toggle-password" aria-label="Toggle password visibility">
+                                    <svg class="eye-icon" viewBox="0 0 24 24" width="24" height="24">
+                                        <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="password-requirements">
+                                <p>Password must contain:</p>
+                                <ul>
+                                    <li data-requirement="length">At least 8 characters</li>
+                                    <li data-requirement="uppercase">One uppercase letter</li>
+                                    <li data-requirement="lowercase">One lowercase letter</li>
+                                    <li data-requirement="number">One number</li>
+                                    <li data-requirement="special">One special character (@$!%*?&)</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="confirmPassword">Confirm Password</label>
+                            <div class="password-input-group">
+                                <input type="password" id="confirmPassword" name="confirmPassword" required autocomplete="new-password">
+                                <button type="button" class="toggle-password" aria-label="Toggle password visibility">
+                                    <svg class="eye-icon" viewBox="0 0 24 24" width="24" height="24">
+                                        <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-buttons">
+                            <button type="button" class="back-button" onclick="showStep(1)">Back</button>
+                            <button type="submit" class="submit-button">Create Account</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Terms of Service Modal -->
+    <div id="termsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Brilliant Plus Terms of Service</h2>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <h3>1. Ambassador Program Overview</h3>
+                <p>Welcome to the Brilliant Plus Ambassador Program. This agreement outlines your rights and responsibilities as a brand ambassador.</p>
+                
+                <h3>2. Eligibility Requirements</h3>
+                <p>To participate in the Brilliant Plus Ambassador Program, you must:</p>
+                <ul>
+                    <li>Be at least 18 years of age</li>
+                    <li>Have an active social media presence</li>
+                    <li>Maintain professional conduct in all brand-related activities</li>
+                    <li>Comply with all applicable laws and regulations</li>
+                </ul>
+
+                <h3>3. Ambassador Responsibilities</h3>
+                <p>As a Brilliant Plus ambassador, you agree to:</p>
+                <ul>
+                    <li>Represent the brand professionally and ethically</li>
+                    <li>Follow our brand guidelines and marketing policies</li>
+                    <li>Maintain confidentiality of proprietary information</li>
+                    <li>Regularly engage with the Brilliant Plus community</li>
+                    <li>Create authentic and valuable content</li>
+                </ul>
+
+                <h3>4. Benefits</h3>
+                <p>As an official ambassador, you'll receive:</p>
+                <ul>
+                    <li>Early access to new Brilliant Plus features and products</li>
+                    <li>Exclusive ambassador-only content and resources</li>
+                    <li>Special promotional opportunities</li>
+                    <li>Access to ambassador community events</li>
+                    <li>Performance-based incentives</li>
+                </ul>
+
+                <h3>5. Content Guidelines</h3>
+                <p>When creating content as an ambassador, ensure that you:</p>
+                <ul>
+                    <li>Clearly disclose your ambassador relationship</li>
+                    <li>Use approved brand messaging and assets</li>
+                    <li>Avoid making false or misleading claims</li>
+                    <li>Respect intellectual property rights</li>
+                </ul>
+
+                <h3>6. Term and Termination</h3>
+                <p>This agreement is effective upon acceptance and continues until terminated. Either party may terminate the agreement with written notice. Brilliant Plus reserves the right to terminate the agreement immediately for violations of these terms.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Account Created Successfully!</h2>
+                <button class="modal-close" onclick="closeSuccessModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p>Your account has been created. Please save your login credentials:</p>
+                <div class="credentials-box">
+                    <div class="credential-item">
+                        <label>Username:</label>
+                        <input type="text" id="createdUsername" readonly>
+                        <button onclick="copyToClipboard('createdUsername')" class="copy-button">Copy</button>
+                    </div>
+                    <div class="credential-item">
+                        <label>Password:</label>
+                        <input type="text" id="createdPassword" readonly>
+                        <button onclick="copyToClipboard('createdPassword')" class="copy-button">Copy</button>
+                    </div>
+                </div>
+                <p class="warning">Please save these credentials in a secure location. You'll need them to access your account.</p>
+                <button onclick="closeSuccessModal()" class="submit-button">Got it!</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js" type="module"></script>
+</body>
+</html> 

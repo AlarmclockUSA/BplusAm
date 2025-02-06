@@ -1,0 +1,34 @@
+{
+  "name": "bplus-am",
+  "version": "1.0.0",
+  "description": "Brilliant Plus Ambassador Portal",
+  "main": "script.js",
+  "type": "module",
+  "scripts": {
+    "start": "http-server -p 8080",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AlarmclockUSA/BplusAm.git"
+  },
+  "keywords": [
+    "brilliant-plus",
+    "ambassador",
+    "portal"
+  ],
+  "author": "Brilliant Plus",
+  "license": "UNLICENSED",
+  "private": true,
+  "bugs": {
+    "url": "https://github.com/AlarmclockUSA/BplusAm/issues"
+  },
+  "homepage": "https://github.com/AlarmclockUSA/BplusAm#readme",
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "http-server": "^14.1.1"
+  },
+  "devDependencies": {
+    "eslint": "^8.35.0"
+  }
+} 
