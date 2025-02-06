@@ -246,22 +246,28 @@ document.getElementById('accountSetupForm').addEventListener('submit', async fun
         // Show loading state before API call
         toggleLoadingState(true);
 
-        // Format the data exactly as it worked in curl
+        // Get SSN from step 1
+        const ssn = document.getElementById('ssn').value;
+
+        // Combine data from both steps
         const requestData = {
             firstName: formData.firstName,
             lastName: formData.lastName,
             email: formData.email,
-            phone: formData.phone.replace(/\D/g, ''),
+            phone: formData.phone,
             address: formData.street1,
+            street2: formData.street2,
             city: formData.city,
             state: formData.province,
             zipCode: formData.postalCode,
-            country: formData.country || "United States"
+            country: formData.country || "United States",
+            password: password,
+            ssn: ssn
         };
 
-        console.log('API Request Payload:', JSON.stringify(requestData, null, 2));
+        console.log('Form data:', sanitizeDataForLogging(requestData));
 
-        // Call the API
+        // Call the createConsultant function
         const success = await createConsultant(requestData);
         
         if (success) {
@@ -512,33 +518,76 @@ function sanitizeDataForLogging(data) {
 
 // Update the API call to use the simple structure
 async function createConsultant(requestData) {
-    // Use the local API endpoint
     const url = '/api/create-consultant';
     
     try {
-        // Log the request details
-        console.log('Making API request to:', url);
-        console.log('Request data:', JSON.stringify(requestData, null, 2));
+        // Format the data according to API structure
+        const apiRequestData = {
+            Person_Name: {
+                FirstName: requestData.firstName,
+                LastName: requestData.lastName
+            },
+            Person_OtherInformation: {
+                ReplicatedSiteURL: generateReplicatedSiteURL(requestData.firstName + requestData.lastName),
+                TranslationLanguageID: 1,
+                ConsultantStatusID: 1,
+                ConsultantTypeID: 1,
+                Username: generateUsername(requestData.email),
+                Password: requestData.password,
+                ConfirmPassword: requestData.password
+            },
+            Person_Identification: {
+                SSN: requestData.ssn ? requestData.ssn.replace(/-/g, '') : null
+            },
+            DoNotSendAutoresponder: true,
+            DoNotSendWebhook: true,
+            Person_SponsorDisplayId: "1001",
+            Person_ContactInfo: {
+                Email: requestData.email,
+                Person_Phones: [
+                    {
+                        PhoneTypeID: 1,
+                        PhoneNumber: requestData.phone.replace(/\D/g, ''),
+                        Primary: true
+                    }
+                ]
+            },
+            Person_Addresses: [
+                {
+                    NickName: "Home Address",
+                    FirstName: requestData.firstName,
+                    LastName: requestData.lastName,
+                    CountryID: 1, // US
+                    ProvinceID: getProvinceID(requestData.state),
+                    Street1: requestData.address,
+                    Street2: requestData.street2 || "",
+                    City: requestData.city,
+                    PostalCode: requestData.zipCode,
+                    Primary: true,
+                    Mailing: true
+                }
+            ]
+        };
 
-        // Make the API call through our proxy
+        console.log('Making API request to:', url);
+        console.log('Request data:', JSON.stringify(apiRequestData, null, 2));
+
         const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(requestData)
+            body: JSON.stringify(apiRequestData)
         });
 
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        // Parse the response
         const result = await response.json();
         console.log('API Response:', result);
 
-        // Check if the API call was successful
         if (result.ResultCode === 0) {
             showMessage('Success! Your application has been submitted. Your consultant ID is: ' + result.Value.DisplayID, 'success');
             return true;
