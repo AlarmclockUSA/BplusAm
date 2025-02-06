@@ -7,6 +7,46 @@ const API_CONFIG = {
     }
 };
 
+// Initialize the form display
+function initializeForm() {
+    // Show the first step by default
+    showStep(1);
+
+    // Make sure the form container is visible
+    const formContainer = document.querySelector('.form-container');
+    if (formContainer) {
+        formContainer.style.display = 'block';
+        formContainer.style.opacity = '1';
+    }
+
+    // Initialize Google Places Autocomplete
+    initializeGooglePlaces();
+
+    // Add input event listeners for validation
+    initializeValidation();
+
+    // Initialize form event listeners
+    initializeFormEventListeners();
+}
+
+// Main initialization
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('step') === 'thank-you') {
+        // Hide the content column for thank you page
+        const contentColumn = document.querySelector('.content-column');
+        if (contentColumn) {
+            contentColumn.style.display = 'none';
+        }
+        
+        // Show mock data for testing
+        showSuccess('testUser123', 'TestPass123!');
+    } else {
+        // Initialize the form normally
+        initializeForm();
+    }
+});
+
 // Initialize authentication tokens
 const authTokens = {
     access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1laWQiOiIyNSIsInVuaXF1ZV9uYW1lIjoiTWF0dEhCcmlsbGlhbnQiLCJyb2xlIjoiQVBJIFVzZXIiLCJSb2xlSUQiOiI2IiwiTGFuZ3VhZ2VJRCI6IjEiLCJGaXJzdE5hbWUiOiJNYXR0IiwiUGVyc29uVHlwZUlEIjoiMyIsIkRhdGVGb3JtYXQiOiJNTS9kZC95eXl5IiwiQnVzaW5lc3NVbml0c19FbmFibGVkIjoiMCIsIm5iZiI6MTczODg2MTM5NSwiZXhwIjoxNzM4OTQ3Nzk1LCJpYXQiOjE3Mzg4NjEzOTV9.pri6_DR0AX8n-qXu_rxA1c3_WwRjMSJ7RaZ_b5prtyo',
@@ -16,131 +56,10 @@ const authTokens = {
     expires_at: new Date('2025-02-07T17:03:15Z')
 };
 
-// Initialize the form display
-function initializeForm() {
-    // Show the first step by default
-    showStep(1);
-
-    // Initialize SSN input handling
-    const ssnInput = document.getElementById('ssn');
-    if (!ssnInput) return; // Guard clause if element not found
-    
-    // Prevent copy/paste on SSN field
-    ssnInput.addEventListener('copy', e => e.preventDefault());
-    ssnInput.addEventListener('paste', e => e.preventDefault());
-    ssnInput.addEventListener('cut', e => e.preventDefault());
-    
-    // Clear SSN value when tab loses focus
-    window.addEventListener('blur', () => {
-        if (document.activeElement !== ssnInput) {
-            ssnInput.value = ssnInput.value.replace(/\d/g, '*');
-        }
-    });
-
-    // Handle SSN formatting
-    ssnInput.addEventListener('input', function(e) {
-        let value = e.target.value.replace(/\D/g, '');
-        if (value.length > 9) {
-            value = value.slice(0, 9);
-        }
-        if (value.length >= 3 && value.length < 5) {
-            value = value.slice(0, 3) + '-' + value.slice(3);
-        } else if (value.length >= 5) {
-            value = value.slice(0, 3) + '-' + value.slice(3, 5) + '-' + value.slice(5);
-        }
-        e.target.value = value;
-    });
-
-    // Add SSN validation
-    ssnInput.addEventListener('blur', function() {
-        const value = this.value;
-        const isValid = /^\d{3}-\d{2}-\d{4}$/.test(value);
-        if (!isValid && value) {
-            this.classList.add('invalid');
-        } else {
-            this.classList.remove('invalid');
-        }
-    });
-
-    // Clear SSN when moving back to step 1
-    document.querySelector('.back-button').addEventListener('click', function() {
-        document.getElementById('ssn').value = '';
-    });
-
-    // Initialize Google Places Autocomplete
-    const street1Input = document.getElementById('street1');
-    if (street1Input && window.google && window.google.maps && window.google.maps.places) {
-        const autocomplete = new google.maps.places.Autocomplete(street1Input, {
-            types: ['address'],
-            componentRestrictions: { country: ['US'] },
-            fields: ['address_components', 'formatted_address']
-        });
-
-        // Handle place selection
-        autocomplete.addListener('place_changed', function() {
-            const place = autocomplete.getPlace();
-            
-            if (!place.address_components) {
-                console.error('No address details available for input');
-                return;
-            }
-
-            // Extract address components
-            for (const component of place.address_components) {
-                const type = component.types[0];
-                
-                switch (type) {
-                    case 'street_number':
-                        document.getElementById('street1').value = component.long_name;
-                        break;
-                    case 'route':
-                        const street = document.getElementById('street1').value;
-                        document.getElementById('street1').value = 
-                            street ? `${street} ${component.long_name}` : component.long_name;
-                        break;
-                    case 'locality':
-                        document.getElementById('city').value = component.long_name;
-                        break;
-                    case 'administrative_area_level_1':
-                        document.getElementById('province').value = component.long_name;
-                        break;
-                    case 'postal_code':
-                        document.getElementById('postalCode').value = component.long_name;
-                        break;
-                    case 'country':
-                        document.getElementById('country').value = component.long_name;
-                        break;
-                }
-            }
-        });
-    }
-
-    // Add input event listeners for validation
-    const addressFields = ['city', 'province', 'postalCode', 'country'];
-    addressFields.forEach(fieldId => {
-        const input = document.getElementById(fieldId);
-        if (input) {
-            input.addEventListener('input', function() {
-                this.classList.remove('invalid');
-                validateAddressFields();
-            });
-        }
-    });
-
-    // Initialize form event listeners
-    initializeFormEventListeners();
-}
-
 // Initialize all event listeners
 function initializeFormEventListeners() {
     // ... rest of your existing code ...
 }
-
-// Call initialization when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize the form without authentication
-    initializeForm();
-});
 
 // Validate address fields
 function validateAddressFields() {
@@ -165,17 +84,6 @@ let formData = {};
 document.getElementById('contactForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
-    // Validate SSN
-    const ssnInput = document.getElementById('ssn');
-    const ssnValue = ssnInput.value;
-    const isValidSSN = /^\d{3}-\d{2}-\d{4}$/.test(ssnValue);
-    
-    if (!isValidSSN) {
-        ssnInput.classList.add('invalid');
-        showError('Please enter a valid Social Security Number (XXX-XX-XXXX).');
-        return;
-    }
-
     // Get all required inputs
     const requiredInputs = this.querySelectorAll('[required]');
     let isValid = true;
@@ -204,7 +112,7 @@ document.getElementById('contactForm').addEventListener('submit', function(e) {
         return;
     }
 
-    // Store step 1 data (excluding SSN)
+    // Store step 1 data
     formData = {
         firstName: document.getElementById('firstName').value,
         lastName: document.getElementById('lastName').value,
@@ -230,7 +138,9 @@ document.getElementById('contactForm').addEventListener('submit', function(e) {
 document.getElementById('accountSetupForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
-    if (!this.checkValidity()) {
+    // Validate password requirements
+    if (!validatePassword()) {
+        showError('Please ensure all password requirements are met.');
         return;
     }
 
@@ -246,45 +156,98 @@ document.getElementById('accountSetupForm').addEventListener('submit', async fun
         // Show loading state before API call
         toggleLoadingState(true);
 
-        // Get SSN from step 1
-        const ssn = document.getElementById('ssn').value;
-
         // Combine data from both steps
         const requestData = {
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            email: formData.email,
-            phone: formData.phone,
-            address: formData.street1,
-            street2: formData.street2,
-            city: formData.city,
-            state: formData.province,
-            zipCode: formData.postalCode,
-            country: formData.country || "United States",
-            password: password,
-            ssn: ssn
+            "Person_Name": {
+                "FirstName": formData.firstName,
+                "LastName": formData.lastName
+            },
+            "Person_OtherInformation": {
+                "ReplicatedSiteURL": generateReplicatedSiteURL(formData.firstName + formData.lastName),
+                "TranslationLanguageID": 1,
+                "ConsultantStatusID": 1,
+                "ConsultantTypeID": 1,
+                "Username": generateUsername(formData.email),
+                "Password": password,
+                "ConfirmPassword": password
+            },
+            "DoNotSendAutoresponder": false,
+            "DoNotSendWebhook": false,
+            "DisplayID": null,
+            "Person_SponsorDisplayId": "1001",
+            "Person_ContactInfo": {
+                "Email": formData.email,
+                "Person_Phones": [
+                    {
+                        "PhoneTypeID": 1,
+                        "PhoneNumber": formData.phone.replace(/\D/g, ''),
+                        "Primary": true
+                    }
+                ]
+            },
+            "Person_Addresses": [
+                {
+                    "NickName": "Home Address",
+                    "FirstName": formData.firstName,
+                    "LastName": formData.lastName,
+                    "CountryID": getCountryID(formData.country),
+                    "ProvinceID": getProvinceID(formData.province),
+                    "Street1": formData.street1,
+                    "Street2": formData.street2 || "",
+                    "City": formData.city,
+                    "PostalCode": formData.postalCode,
+                    "Primary": true,
+                    "Mailing": true
+                }
+            ]
         };
 
-        console.log('Form data:', sanitizeDataForLogging(requestData));
+        console.log('Making API request:', sanitizeDataForLogging(requestData));
 
-        // Call the createConsultant function
-        const success = await createConsultant(requestData);
-        
-        if (success) {
+        const response = await fetch('/api/create-consultant', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('API Response:', result);
+
+        if (result.ResultCode === 0) {
             showSuccess(document.getElementById('username').value, password);
+            return true;
+        } else {
+            const errorMessage = result.Notifications && result.Notifications.length > 0 
+                ? result.Notifications[0].Message 
+                : 'Failed to submit application. Please try again.';
+            showError(errorMessage);
+            return false;
         }
     } catch (error) {
+        console.error('Form submission error:', error);
         showError('An unexpected error occurred. Please try again.', {
             errorType: error.name,
             errorMessage: error.message,
             timestamp: new Date().toISOString()
         });
-        console.error('Form submission error:', error);
     } finally {
         // Hide loading state after API call completes
         toggleLoadingState(false);
     }
 });
+
+// Remove duplicate event listener
+const existingHandler = document.getElementById('applicationForm');
+if (existingHandler) {
+    existingHandler.removeEventListener('submit', existingHandler);
+}
 
 // Password validation
 const passwordInput = document.getElementById('password');
@@ -397,24 +360,33 @@ function showStep(step) {
     });
     document.querySelector(`[data-step="${step}"]`).classList.add('active');
 
-    // Hide all forms and show the current step
+    // Hide all forms
     document.querySelectorAll('.step-form').forEach(form => {
         form.style.display = 'none';
         form.classList.remove('active');
     });
+
+    // Show the current step form
     const currentForm = document.querySelector(`.step-form[data-step="${step}"]`);
-    currentForm.style.display = 'block';
-    
-    // Clear SSN when showing step 1
-    if (step === 1) {
-        document.getElementById('ssn').value = '';
+    if (currentForm) {
+        currentForm.style.display = 'block';
+        // Add active class after a brief delay to trigger transition
+        setTimeout(() => {
+            currentForm.classList.add('active');
+        }, 10);
     }
-    
-    // Use setTimeout to ensure display: block is applied before adding the active class
-    setTimeout(() => {
-        currentForm.classList.add('active');
-    }, 10);
 }
+
+// Initialize back button functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const backButton = document.querySelector('.back-button');
+    if (backButton) {
+        backButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            showStep(1);
+        });
+    }
+});
 
 // Helper Functions
 function generateReplicatedSiteURL(name) {
@@ -460,7 +432,7 @@ function getProvinceID(provinceName) {
         'WI': 'Wisconsin', 'WY': 'Wyoming'
     };
 
-    // Map of state names to IDs
+    // Updated map of state names to IDs with correct mappings
     const provinceMap = {
         'ALABAMA': 1, 'ALASKA': 2, 'ARIZONA': 3, 'ARKANSAS': 4,
         'CALIFORNIA': 5, 'COLORADO': 6, 'CONNECTICUT': 7, 'DELAWARE': 8,
@@ -488,10 +460,14 @@ function getProvinceID(provinceName) {
         }
     }
 
-    // Add logging to help debug
-    console.log('Province name received:', provinceName);
-    console.log('Cleaned name:', cleanName);
-    console.log('Resolved ID:', id);
+    // Enhanced logging for debugging
+    console.log('State/Province Resolution:', {
+        received: provinceName,
+        cleaned: cleanName,
+        fullName: cleanName.length === 2 ? stateAbbreviations[cleanName.toUpperCase()] : cleanName,
+        resolvedId: id,
+        isAbbreviation: cleanName.length === 2
+    });
 
     return id || null;
 }
@@ -516,103 +492,6 @@ function sanitizeDataForLogging(data) {
     return sanitizedData;
 }
 
-// Update the API call to use the simple structure
-async function createConsultant(requestData) {
-    const url = '/api/create-consultant';
-    
-    try {
-        // Format the data according to API structure
-        const apiRequestData = {
-            Person_Name: {
-                FirstName: requestData.firstName,
-                LastName: requestData.lastName
-            },
-            Person_OtherInformation: {
-                ReplicatedSiteURL: generateReplicatedSiteURL(requestData.firstName + requestData.lastName),
-                TranslationLanguageID: 1,
-                ConsultantStatusID: 1,
-                ConsultantTypeID: 1,
-                Username: generateUsername(requestData.email),
-                Password: requestData.password,
-                ConfirmPassword: requestData.password
-            },
-            Person_Identification: {
-                SSN: requestData.ssn ? requestData.ssn.replace(/-/g, '') : null
-            },
-            DoNotSendAutoresponder: true,
-            DoNotSendWebhook: true,
-            Person_SponsorDisplayId: "1001",
-            Person_ContactInfo: {
-                Email: requestData.email,
-                Person_Phones: [
-                    {
-                        PhoneTypeID: 1,
-                        PhoneNumber: requestData.phone.replace(/\D/g, ''),
-                        Primary: true
-                    }
-                ]
-            },
-            Person_Addresses: [
-                {
-                    NickName: "Home Address",
-                    FirstName: requestData.firstName,
-                    LastName: requestData.lastName,
-                    CountryID: 1, // US
-                    ProvinceID: getProvinceID(requestData.state),
-                    Street1: requestData.address,
-                    Street2: requestData.street2 || "",
-                    City: requestData.city,
-                    PostalCode: requestData.zipCode,
-                    Primary: true,
-                    Mailing: true
-                }
-            ]
-        };
-
-        console.log('Making API request to:', url);
-        console.log('Request data:', JSON.stringify(apiRequestData, null, 2));
-
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(apiRequestData)
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        console.log('API Response:', result);
-
-        if (result.ResultCode === 0) {
-            showMessage('Success! Your application has been submitted. Your consultant ID is: ' + result.Value.DisplayID, 'success');
-            return true;
-        } else {
-            const errorMessage = result.Notifications && result.Notifications.length > 0 
-                ? result.Notifications[0].Message 
-                : 'Failed to submit application. Please try again.';
-            showMessage(errorMessage, 'error');
-            return false;
-        }
-    } catch (error) {
-        console.error('API Call Failed:', {
-            url,
-            error: error.message,
-            type: error.name,
-            stack: error.stack,
-            online: navigator.onLine,
-            readyState: document.readyState
-        });
-        
-        showMessage('Failed to submit application. Please try again.', 'error');
-        return false;
-    }
-}
-
 // UI Helper Functions
 function toggleLoadingState(isLoading) {
     const submitButtons = document.querySelectorAll('.submit-button');
@@ -628,9 +507,35 @@ function toggleLoadingState(isLoading) {
 }
 
 function showSuccess(username, password) {
-    document.getElementById('createdUsername').value = username;
-    document.getElementById('createdPassword').value = password;
-    document.getElementById('successModal').style.display = 'flex';
+    // Hide the content column
+    const contentColumn = document.querySelector('.content-column');
+    if (contentColumn) {
+        contentColumn.style.display = 'none';
+    }
+
+    // Hide step indicator
+    const stepIndicator = document.querySelector('.step-indicator');
+    if (stepIndicator) {
+        stepIndicator.style.display = 'none';
+    }
+
+    // Set the credentials in the thank you page
+    document.getElementById('finalUsername').value = username;
+    document.getElementById('finalPassword').value = password;
+    
+    // Show the thank you step
+    document.querySelectorAll('.step-form').forEach(form => {
+        form.style.display = 'none';
+        form.classList.remove('active');
+    });
+
+    const thankYouStep = document.querySelector('.thank-you-step');
+    if (thankYouStep) {
+        thankYouStep.style.display = 'block';
+        setTimeout(() => {
+            thankYouStep.classList.add('active');
+        }, 10);
+    }
 }
 
 function showError(message, details = null) {
@@ -659,17 +564,27 @@ function copyToClipboard(elementId) {
 // Modal Functions
 function openModal() {
     const modal = document.getElementById('termsModal');
+    if (!modal) return;
+    
     modal.style.display = 'flex';
-    setTimeout(() => {
-        modal.style.opacity = '1';
-        modal.querySelector('.modal-content').style.transform = 'translateY(0)';
-    }, 10);
+    modal.style.opacity = '1';
+    
+    const modalContent = modal.querySelector('.modal-content');
+    if (modalContent) {
+        modalContent.style.transform = 'translateY(0)';
+    }
 }
 
 function closeModal() {
     const modal = document.getElementById('termsModal');
+    if (!modal) return;
+    
     modal.style.opacity = '0';
-    modal.querySelector('.modal-content').style.transform = 'translateY(20px)';
+    const modalContent = modal.querySelector('.modal-content');
+    if (modalContent) {
+        modalContent.style.transform = 'translateY(20px)';
+    }
+    
     setTimeout(() => {
         modal.style.display = 'none';
     }, 300);
@@ -684,16 +599,37 @@ function closeSuccessModal() {
     }, 300);
 }
 
-// Close modals when clicking outside
-window.addEventListener('click', function(event) {
-    const termsModal = document.getElementById('termsModal');
-    const successModal = document.getElementById('successModal');
-    
-    if (event.target === termsModal) {
-        closeModal();
-    } else if (event.target === successModal) {
-        closeSuccessModal();
-    }
+// Initialize modal event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Terms modal open button
+    const termsLinks = document.querySelectorAll('.terms-link');
+    termsLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            openModal();
+        });
+    });
+
+    // Close button in modal
+    const closeButtons = document.querySelectorAll('.modal-close');
+    closeButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            closeModal();
+        });
+    });
+
+    // Close on outside click
+    window.addEventListener('click', function(event) {
+        const termsModal = document.getElementById('termsModal');
+        const successModal = document.getElementById('successModal');
+        
+        if (event.target === termsModal) {
+            closeModal();
+        } else if (event.target === successModal) {
+            closeSuccessModal();
+        }
+    });
 });
 
 // Add CSS class for invalid inputs
@@ -708,75 +644,3 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style); 
-
-// ... existing code ...
-document.getElementById('applicationForm').addEventListener('submit', async function(event) {
-    event.preventDefault();
-    
-    // Show loading state
-    const submitButton = this.querySelector('button[type="submit"]');
-    const originalButtonText = submitButton.textContent;
-    submitButton.disabled = true;
-    submitButton.textContent = 'Submitting...';
-    
-    try {
-        // Format the data exactly as it worked in curl
-        const requestData = {
-            firstName: document.getElementById('firstName').value,
-            lastName: document.getElementById('lastName').value,
-            email: document.getElementById('email').value,
-            phone: document.getElementById('phone').value.replace(/\D/g, ''),
-            address: document.getElementById('street1').value,
-            city: document.getElementById('city').value,
-            state: document.getElementById('province').value,
-            zipCode: document.getElementById('postalCode').value,
-            country: document.getElementById('country').value || "United States"
-        };
-        
-        // Call the createConsultant function
-        const success = await createConsultant(requestData);
-        
-        if (success) {
-            // Form was submitted successfully and has been reset
-            submitButton.textContent = 'Success!';
-            setTimeout(() => {
-                submitButton.textContent = originalButtonText;
-                submitButton.disabled = false;
-            }, 2000);
-        } else {
-            // Error was already handled in createConsultant
-            submitButton.textContent = originalButtonText;
-            submitButton.disabled = false;
-        }
-    } catch (error) {
-        console.error('Form submission error:', error);
-        showMessage('An unexpected error occurred. Please try again.', 'error');
-        submitButton.textContent = originalButtonText;
-        submitButton.disabled = false;
-    }
-});
-
-// Helper function to show messages to the user
-function showMessage(message, type = 'info') {
-    const messageContainer = document.getElementById('messageContainer');
-    if (!messageContainer) {
-        console.error('Message container not found');
-        return;
-    }
-    
-    const messageElement = document.createElement('div');
-    messageElement.className = `alert alert-${type}`;
-    messageElement.textContent = message;
-    
-    // Clear any existing messages
-    messageContainer.innerHTML = '';
-    messageContainer.appendChild(messageElement);
-    
-    // Auto-hide success messages after 5 seconds
-    if (type === 'success') {
-        setTimeout(() => {
-            messageElement.remove();
-        }, 5000);
-    }
-}
-// ... existing code ...
