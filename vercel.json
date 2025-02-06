@@ -20,6 +20,7 @@
         { "src": "/(.*)", "dest": "/$1" }
     ],
     "env": {
-        "API_ACCESS_TOKEN": "@api_access_token"
+        "API_ACCESS_TOKEN": "@api_access_token",
+        "API_REFRESH_TOKEN": "@api_refresh_token"
     }
 } 
