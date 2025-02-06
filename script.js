@@ -236,8 +236,6 @@ document.getElementById('accountSetupForm').addEventListener('submit', async fun
 
     const password = document.getElementById('password').value;
     const confirmPassword = document.getElementById('confirmPassword').value;
-    // Send SSN as plain string without any formatting
-    const ssnValue = document.getElementById('ssn').value.replace(/[^0-9]/g, '');
 
     if (password !== confirmPassword) {
         showError('Passwords do not match');
@@ -245,71 +243,29 @@ document.getElementById('accountSetupForm').addEventListener('submit', async fun
     }
 
     try {
-        const apiData = {
-            Person_Name: {
-                FirstName: formData.firstName,
-                LastName: formData.lastName
-            },
-            Person_OtherInformation: {
-                ReplicatedSiteURL: generateReplicatedSiteURL(formData.firstName + formData.lastName),
-                TranslationLanguageID: 1,
-                ConsultantStatusID: 1,
-                ConsultantTypeID: 1,
-                Username: document.getElementById('username').value,
-                Password: password,
-                ConfirmPassword: confirmPassword
-            },
-            Person_Identification: {
-                SSN: ssnValue // Plain string of numbers
-            },
-            DoNotSendAutoresponder: true,
-            DoNotSendWebhook: true,
-            DisplayID: null,
-            Person_SponsorDisplayId: "1001",
-            Person_ContactInfo: {
-                Email: formData.email,
-                Person_Phones: [
-                    {
-                        PhoneTypeID: 1,
-                        PhoneNumber: formData.phone.replace(/\D/g, ''),
-                        Primary: true
-                    }
-                ]
-            },
-            Person_Addresses: [
-                {
-                    NickName: "Home Address",
-                    FirstName: formData.firstName,
-                    LastName: formData.lastName,
-                    CountryID: 1, // US
-                    ProvinceID: getProvinceID(formData.province),
-                    Street1: formData.street1,
-                    Street2: formData.street2 || "",
-                    City: formData.city,
-                    PostalCode: formData.postalCode,
-                    Primary: true,
-                    Mailing: true
-                }
-            ]
-        };
-
-        // Show loading state
+        // Show loading state before API call
         toggleLoadingState(true);
 
-        // Validate required IDs
-        if (!apiData.Person_Addresses[0].ProvinceID) {
-            throw new Error('Invalid state/province. Please select a valid US state.');
-        }
+        // Format the data exactly as it worked in curl
+        const requestData = {
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email,
+            phone: formData.phone.replace(/\D/g, ''),
+            address: formData.street1,
+            city: formData.city,
+            state: formData.province,
+            zipCode: formData.postalCode,
+            country: formData.country || "United States"
+        };
 
-        console.log('API Request Payload:', JSON.stringify(apiData, null, 2));
+        console.log('API Request Payload:', JSON.stringify(requestData, null, 2));
 
-        // Make API call
-        const response = await createConsultant(apiData);
-
-        if (response.success) {
-            showSuccess(apiData.Person_OtherInformation.Username, apiData.Person_OtherInformation.Password);
-        } else {
-            showError(response.error, response.details);
+        // Call the API
+        const success = await createConsultant(requestData);
+        
+        if (success) {
+            showSuccess(document.getElementById('username').value, password);
         }
     } catch (error) {
         showError('An unexpected error occurred. Please try again.', {
@@ -319,6 +275,7 @@ document.getElementById('accountSetupForm').addEventListener('submit', async fun
         });
         console.error('Form submission error:', error);
     } finally {
+        // Hide loading state after API call completes
         toggleLoadingState(false);
     }
 });
@@ -553,66 +510,66 @@ function sanitizeDataForLogging(data) {
     return sanitizedData;
 }
 
-// Update the API call logging
-async function createConsultant(data) {
-    const url = `${API_CONFIG.STAGING_URL}${API_CONFIG.ENDPOINTS.CREATE_CONSULTANT}`;
+// Update the API call to use the simple structure
+async function createConsultant(requestData) {
+    const url = 'https://api.brilliantplus.app/api/Consultants/CreateConsultant';
+    
     try {
-        console.log('Making API request to:', url);
-        
-        // Use the existing token with minimal required headers
-        const headers = {
-            'Authorization': `${authTokens.token_type} ${authTokens.access_token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
+        // Format the data exactly as it worked in curl
+        const curlData = {
+            firstName: requestData.firstName,
+            lastName: requestData.lastName,
+            email: requestData.email,
+            phone: requestData.phone,
+            address: requestData.address,
+            city: requestData.city,
+            state: requestData.state,
+            zipCode: requestData.zipCode,
+            country: requestData.country || "United States"
         };
-        
-        // Log sanitized version of the payload
-        console.log('Request payload:', JSON.stringify(sanitizeDataForLogging(data), null, 2));
 
+        // Log the request details
+        console.log('Making API request to:', url);
+        console.log('Request data:', JSON.stringify(curlData, null, 2));
+
+        // Make the API call with EXACTLY the same headers that worked in curl
         const response = await fetch(url, {
             method: 'POST',
-            headers: headers,
-            body: JSON.stringify(data)
+            headers: {
+                'Authorization': 'Bearer ' + authTokens.access_token,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(curlData)
         });
 
-        console.log('Response status:', response.status);
-        console.log('Response headers:', Object.fromEntries([...response.headers]));
-
-        if (!response.ok) {
-            let errorMessage;
-            try {
-                const errorData = await response.json();
-                // Sanitize error data before logging
-                console.error('API Error Response:', sanitizeDataForLogging(errorData));
-                errorMessage = errorData.message || errorData.error || 'Unknown API error';
-            } catch (e) {
-                const responseText = await response.text();
-                console.error('Error parsing error response:', responseText.replace(/\d{3}-\d{2}-\d{4}/g, '***-**-****'));
-                errorMessage = `HTTP error! status: ${response.status} ${response.statusText}`;
-            }
-            throw new Error(errorMessage);
-        }
-
+        // Parse the response
         const result = await response.json();
-        // Log sanitized version of the response
-        console.log('API Success Response:', sanitizeDataForLogging(result));
-        return { success: true, data: result };
+        console.log('API Response:', result);
+
+        // Check if the API call was successful
+        if (result.ResultCode === 0) {
+            showMessage('Success! Your application has been submitted. Your consultant ID is: ' + result.Value.DisplayID, 'success');
+            return true;
+        } else {
+            const errorMessage = result.Notifications && result.Notifications.length > 0 
+                ? result.Notifications[0].Message 
+                : 'Failed to submit application. Please try again.';
+            showMessage(errorMessage, 'error');
+            return false;
+        }
     } catch (error) {
         console.error('API Call Failed:', {
             url,
-            error: error.message.replace(/\d{3}-\d{2}-\d{4}/g, '***-**-****'),
-            stack: error.stack?.replace(/\d{3}-\d{2}-\d{4}/g, '***-**-****')
+            error: error.message,
+            type: error.name,
+            stack: error.stack,
+            online: navigator.onLine,
+            readyState: document.readyState
         });
-        return { 
-            success: false, 
-            error: error.message.replace(/\d{3}-\d{2}-\d{4}/g, '***-**-****'),
-            details: {
-                url,
-                timestamp: new Date().toISOString(),
-                errorType: error.name,
-                fullError: error.toString().replace(/\d{3}-\d{2}-\d{4}/g, '***-**-****')
-            }
-        };
+        
+        showMessage('Failed to submit application. Please try again.', 'error');
+        return false;
     }
 }
 
@@ -711,3 +668,75 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style); 
+
+// ... existing code ...
+document.getElementById('applicationForm').addEventListener('submit', async function(event) {
+    event.preventDefault();
+    
+    // Show loading state
+    const submitButton = this.querySelector('button[type="submit"]');
+    const originalButtonText = submitButton.textContent;
+    submitButton.disabled = true;
+    submitButton.textContent = 'Submitting...';
+    
+    try {
+        // Format the data exactly as it worked in curl
+        const requestData = {
+            firstName: document.getElementById('firstName').value,
+            lastName: document.getElementById('lastName').value,
+            email: document.getElementById('email').value,
+            phone: document.getElementById('phone').value.replace(/\D/g, ''),
+            address: document.getElementById('street1').value,
+            city: document.getElementById('city').value,
+            state: document.getElementById('province').value,
+            zipCode: document.getElementById('postalCode').value,
+            country: document.getElementById('country').value || "United States"
+        };
+        
+        // Call the createConsultant function
+        const success = await createConsultant(requestData);
+        
+        if (success) {
+            // Form was submitted successfully and has been reset
+            submitButton.textContent = 'Success!';
+            setTimeout(() => {
+                submitButton.textContent = originalButtonText;
+                submitButton.disabled = false;
+            }, 2000);
+        } else {
+            // Error was already handled in createConsultant
+            submitButton.textContent = originalButtonText;
+            submitButton.disabled = false;
+        }
+    } catch (error) {
+        console.error('Form submission error:', error);
+        showMessage('An unexpected error occurred. Please try again.', 'error');
+        submitButton.textContent = originalButtonText;
+        submitButton.disabled = false;
+    }
+});
+
+// Helper function to show messages to the user
+function showMessage(message, type = 'info') {
+    const messageContainer = document.getElementById('messageContainer');
+    if (!messageContainer) {
+        console.error('Message container not found');
+        return;
+    }
+    
+    const messageElement = document.createElement('div');
+    messageElement.className = `alert alert-${type}`;
+    messageElement.textContent = message;
+    
+    // Clear any existing messages
+    messageContainer.innerHTML = '';
+    messageContainer.appendChild(messageElement);
+    
+    // Auto-hide success messages after 5 seconds
+    if (type === 'success') {
+        setTimeout(() => {
+            messageElement.remove();
+        }, 5000);
+    }
+}
+// ... existing code ...
