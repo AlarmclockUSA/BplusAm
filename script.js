@@ -512,36 +512,27 @@ function sanitizeDataForLogging(data) {
 
 // Update the API call to use the simple structure
 async function createConsultant(requestData) {
-    const url = 'https://api.brilliantplus.app/api/Consultants/CreateConsultant';
+    // Use the local API endpoint
+    const url = '/api/create-consultant';
     
     try {
-        // Format the data exactly as it worked in curl
-        const curlData = {
-            firstName: requestData.firstName,
-            lastName: requestData.lastName,
-            email: requestData.email,
-            phone: requestData.phone,
-            address: requestData.address,
-            city: requestData.city,
-            state: requestData.state,
-            zipCode: requestData.zipCode,
-            country: requestData.country || "United States"
-        };
-
         // Log the request details
         console.log('Making API request to:', url);
-        console.log('Request data:', JSON.stringify(curlData, null, 2));
+        console.log('Request data:', JSON.stringify(requestData, null, 2));
 
-        // Make the API call with EXACTLY the same headers that worked in curl
+        // Make the API call through our proxy
         const response = await fetch(url, {
             method: 'POST',
             headers: {
-                'Authorization': 'Bearer ' + authTokens.access_token,
                 'Accept': 'application/json',
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(curlData)
+            body: JSON.stringify(requestData)
         });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
 
         // Parse the response
         const result = await response.json();
