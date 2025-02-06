@@ -2,10 +2,16 @@
 node_modules/
 package-lock.json
 
-# Environment variables
+# Environment variables and sensitive data
 .env
 .env.local
 .env.*.local
+*.env
+maps-config.js
+**/credentials.json
+**/secrets.json
+**/*key*.json
+**/*api*.json
 
 # IDE files
 .vscode/
@@ -31,4 +37,9 @@ out/
 # Cache directories
 .cache/
 .npm/
-.eslintcache 
+.eslintcache
+
+# Local development files
+*.local
+*.local.*
+local.*
