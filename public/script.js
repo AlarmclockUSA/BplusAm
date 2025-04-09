@@ -23,8 +23,61 @@ const initialize = async () => {
         }
         
         stripe = Stripe(window.stripePublishableKey);
-        console.log('Stripe initialized with publishable key');
+        console.log('Stripe initialized with publishable key:', window.stripePublishableKey);
 
+        // Try creating a card element directly without payment intent first
+        try {
+            console.log('Attempting to create card element first');
+            const mountElement = document.querySelector('#payment-element');
+            
+            if (!mountElement) {
+                throw new Error('Payment element mount target not found in DOM');
+            }
+            
+            // Clear out any existing content
+            mountElement.innerHTML = '';
+            
+            // Simple appearance object
+            const appearance = {
+                theme: 'stripe',
+                variables: {
+                    colorPrimary: '#7fb69e',
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                },
+            };
+            
+            // Create elements instance without client secret first
+            elements = stripe.elements({appearance});
+            
+            // Create a card element instead of payment element
+            const cardElement = elements.create('card', {
+                style: {
+                    base: {
+                        color: '#32325d',
+                        fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
+                        fontSmoothing: 'antialiased',
+                        fontSize: '16px',
+                        '::placeholder': {
+                            color: '#aab7c4'
+                        }
+                    },
+                    invalid: {
+                        color: '#fa755a',
+                        iconColor: '#fa755a'
+                    }
+                }
+            });
+            
+            // Mount the card element
+            cardElement.mount('#payment-element');
+            console.log('Card element mounted successfully');
+            return;
+        } catch (cardError) {
+            console.error('Error creating card element, falling back to payment intent:', cardError);
+        }
+
+        // If card element creation fails, try with payment intent as before
+        console.log('Creating payment intent');
         const response = await fetch("/create-payment-intent", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -151,37 +204,112 @@ const handleSubmit = async (e) => {
     setLoading(true);
 
     collectFormData();
-
-    const { error } = await stripe.confirmPayment({
-        elements,
-        confirmParams: {
-            return_url: `${window.location.origin}/success.html`,
-            receipt_email: formData.email,
-            payment_method_data: {
+    
+    try {
+        let error;
+        
+        // Check if we're using a card element or payment element
+        const cardElement = elements && elements.getElement('card');
+        
+        if (cardElement) {
+            // Card Element approach (no payment intent yet)
+            console.log('Using card element approach');
+            
+            // Create a payment method with the card element
+            const { error: createError, paymentMethod } = await stripe.createPaymentMethod({
+                type: 'card',
+                card: cardElement,
                 billing_details: {
                     name: `${formData.firstName} ${formData.lastName}`,
                     email: formData.email,
                     phone: formData.phone,
                     address: {
                         line1: formData.street,
-                        line2: formData.apt,
+                        line2: formData.apt || '',
                         city: formData.city,
                         postal_code: formData.zip,
                         country: formData.country,
                         state: formData.state
                     }
                 }
+            });
+            
+            if (createError) {
+                error = createError;
+            } else {
+                // Create a payment intent on the server with the payment method
+                const response = await fetch('/create-payment-intent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        affiliateData: getAffiliateData(),
+                        payment_method_id: paymentMethod.id
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.error) {
+                    error = { message: result.error };
+                } else if (result.clientSecret) {
+                    // Confirm the payment
+                    const { error: confirmError } = await stripe.confirmCardPayment(
+                        result.clientSecret, {
+                            payment_method: paymentMethod.id
+                        }
+                    );
+                    
+                    if (confirmError) {
+                        error = confirmError;
+                    } else {
+                        // Success - redirect to success page
+                        window.location.href = `/success.html?id=amb_${Math.random().toString(36).substr(2, 9)}`;
+                        return;
+                    }
+                }
             }
-        },
-    });
-
-    if (error.type === "card_error" || error.type === "validation_error") {
-        showMessage(error.message);
-    } else {
-        showMessage("An unexpected error occurred.");
+        } else {
+            // Payment Element approach (with existing payment intent)
+            console.log('Using payment element approach');
+            const { error: confirmError } = await stripe.confirmPayment({
+                elements,
+                confirmParams: {
+                    return_url: `${window.location.origin}/success.html`,
+                    receipt_email: formData.email,
+                    payment_method_data: {
+                        billing_details: {
+                            name: `${formData.firstName} ${formData.lastName}`,
+                            email: formData.email,
+                            phone: formData.phone,
+                            address: {
+                                line1: formData.street,
+                                line2: formData.apt,
+                                city: formData.city,
+                                postal_code: formData.zip,
+                                country: formData.country,
+                                state: formData.state
+                            }
+                        }
+                    }
+                },
+            });
+            
+            error = confirmError;
+        }
+        
+        if (error) {
+            if (error.type === "card_error" || error.type === "validation_error") {
+                showMessage(error.message);
+            } else {
+                showMessage("An unexpected error occurred.");
+            }
+        }
+    } catch (err) {
+        console.error('Payment submission error:', err);
+        showMessage("An unexpected error occurred. Please try again.");
+    } finally {
+        setLoading(false);
     }
-
-    setLoading(false);
 };
 
 // UI helpers

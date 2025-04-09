@@ -60,98 +60,57 @@ app.get('/success', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'success.html'));
 });
 
-// Serve Stripe publishable key
-app.get('/stripe-key', (req, res) => {
+// Process form submission with payment
+app.post('/submit-form', async (req, res) => {
   try {
-    console.log('Fetching Stripe publishable key');
+    console.log('Processing form submission with payment');
+    const { firstName, lastName, email, paymentMethod } = req.body;
     
-    // Check for environment variable
-    if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
-      console.error('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY not found in environment');
-      // Fallback for production if env variable not available
-      const fallbackKey = 'pk_live_XR5M7XE6egOwx6NnAsCgTzgz00w9tprsh';
-      console.log('Using fallback publishable key for production');
-      return res.json({ key: fallbackKey });
+    if (!paymentMethod) {
+      return res.status(400).json({ error: 'Payment method is required' });
     }
     
-    console.log('Stripe publishable key found in environment');
-    res.json({ key: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY });
-  } catch (error) {
-    console.error('Error serving Stripe key:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Handle successful payment and redirect
-app.post('/payment-success', async (req, res) => {
-  try {
-    const { paymentIntent, affiliateData } = req.body;
+    // Create a customer
+    const customer = await stripe.customers.create({
+      name: `${firstName} ${lastName}`,
+      email: email,
+      payment_method: paymentMethod
+    });
+    console.log(`Created customer: ${customer.id}`);
+    
+    // Fixed amount for ambassador program
+    const amount = 1000; // $10.00
+    
+    // Create a payment intent
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amount,
+      currency: 'usd',
+      customer: customer.id,
+      payment_method: paymentMethod,
+      confirm: true,
+      description: 'Brilliant Plus Ambassador Program - Annual Fee',
+      metadata: {
+        customer_name: `${firstName} ${lastName}`,
+        customer_email: email,
+        source: 'Ambassador Only Funnel'
+      }
+    });
+    
+    console.log(`Payment processed: ${paymentIntent.id}`);
+    
+    // Generate ambassador ID
     const ambassadorId = 'amb_' + Math.random().toString(36).substr(2, 9);
-    res.json({ 
+    
+    // Return success response
+    res.json({
       success: true,
+      ambassadorId: ambassadorId,
       redirectUrl: `/success.html?id=${ambassadorId}`
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Create payment intent
-app.post('/create-payment-intent', async (req, res) => {
-  try {
-    console.log('Creating payment intent');
-    const { affiliateData } = req.body;
-    
-    // Remove the 'z' at the end of the price ID that's causing the error
-    const correctPriceId = 'price_1RBgAMEWsQ0IpmHOfLYH1MPt'; // Fixed price ID
-    
-    console.log(`Retrieving price from Stripe with ID: ${correctPriceId}`);
-    
-    try {
-      const price = await stripe.prices.retrieve(correctPriceId);
-      console.log(`Price retrieved: ${price.unit_amount} ${price.currency}`);
-      
-      console.log('Creating payment intent with Stripe');
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: price.unit_amount,
-        currency: price.currency,
-        automatic_payment_methods: {
-          enabled: true,
-        },
-        metadata: {
-          source: 'Ambassador Only Funnel',
-          source_url: affiliateData?.source_url || 'direct'
-        }
-      });
-      
-      console.log(`Payment intent created with ID: ${paymentIntent.id}`);
-      res.json({
-        clientSecret: paymentIntent.client_secret
-      });
-    } catch (priceError) {
-      console.error('Error retrieving price, using fixed amount:', priceError);
-      
-      // Fallback to hardcoded amount if price retrieval fails
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: 1000, // $10.00 in cents
-        currency: 'usd',
-        automatic_payment_methods: {
-          enabled: true,
-        },
-        metadata: {
-          source: 'Ambassador Only Funnel',
-          source_url: affiliateData?.source_url || 'direct'
-        }
-      });
-      
-      console.log(`Created payment intent with fixed amount: ${paymentIntent.id}`);
-      res.json({
-        clientSecret: paymentIntent.client_secret
-      });
-    }
-  } catch (error) {
-    console.error('Error creating payment intent:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Payment processing error:', error);
+    const errorMessage = error.message || 'An error occurred while processing payment';
+    res.status(500).json({ error: errorMessage });
   }
 });
 

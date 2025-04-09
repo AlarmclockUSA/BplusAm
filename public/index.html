@@ -102,127 +102,204 @@
 
                     <div class="form-group">
                         <label>Card Information</label>
-                        <div id="payment-element" style="min-height: 150px; border: 1px solid #e0e0e0; padding: 10px; border-radius: 4px;"></div>
-                        <div id="payment-message" class="hidden"></div>
+                        <div id="card-element" style="padding: 10px; border: 1px solid #e0e0e0; border-radius: 4px; background: white; min-height: 20px;"></div>
+                        <div id="card-errors" role="alert" class="error-message"></div>
                     </div>
 
                     <button type="submit" id="submit-button">
                         <span id="button-text">Join Now for $10</span>
-                        <div id="spinner" class="hidden">Processing...</div>
+                        <div id="spinner" class="hidden">
+                            <svg class="spinner" width="20px" height="20px" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg">
+                                <circle class="path" fill="none" stroke-width="6" stroke-linecap="round" cx="33" cy="33" r="30"></circle>
+                            </svg>
+                            Processing...
+                        </div>
                     </button>
                 </form>
             </div>
         </div>
     </div>
+    <style>
+        /* Button states */
+        #submit-button {
+            position: relative;
+            min-height: 44px;
+        }
+        
+        #submit-button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        
+        #spinner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+    </style>
     <script>
-        // Define a hardcoded fallback key for emergencies
-        const FALLBACK_KEY = 'pk_live_XR5M7XE6egOwx6NnAsCgTzgz00w9tprsh';
-        let keyFetchAttempts = 0;
-        const MAX_KEY_FETCH_ATTEMPTS = 3;
+        // Stripe configuration
+        const stripe = Stripe('pk_live_XR5M7XE6egOwx6NnAsCgTzgz00w9tprsTh'); // Your publishable key
+        let card;
         
-        // First check for cached key in localStorage
-        const cachedKey = localStorage.getItem('stripe_publishable_key');
-        if (cachedKey) {
-            console.log('Using cached Stripe key from localStorage');
-            window.stripePublishableKey = cachedKey;
-            loadStripeScript();
-        } else {
-            fetchStripeKey();
-        }
-        
-        function fetchStripeKey() {
-            if (keyFetchAttempts >= MAX_KEY_FETCH_ATTEMPTS) {
-                console.error(`Failed to fetch Stripe key after ${MAX_KEY_FETCH_ATTEMPTS} attempts`);
-                useEmergencyKey();
-                return;
-            }
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Stripe Elements
+            const elements = stripe.elements();
             
-            keyFetchAttempts++;
-            console.log(`Fetching Stripe publishable key from server (attempt ${keyFetchAttempts})`);
-            
-            fetch('/stripe-key', {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                // Add credentials to ensure cookies are sent with the request
-                credentials: 'include',
-                // Set a timeout for the request
-                signal: AbortSignal.timeout(5000)
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch Stripe key: ${response.status} ${response.statusText}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('Stripe key received from server:', data);
-                if (!data || !data.key) {
-                    throw new Error('Invalid Stripe key response from server');
-                }
-                
-                // Cache the key for future use
-                window.stripePublishableKey = data.key;
-                localStorage.setItem('stripe_publishable_key', data.key);
-                
-                // Load Stripe script
-                loadStripeScript();
-            })
-            .catch(error => {
-                console.error('Error fetching Stripe key:', error);
-                
-                // Retry or use fallback
-                setTimeout(() => {
-                    if (keyFetchAttempts < MAX_KEY_FETCH_ATTEMPTS) {
-                        fetchStripeKey();
-                    } else {
-                        useEmergencyKey();
+            // Create and mount the card element
+            card = elements.create('card', {
+                style: {
+                    base: {
+                        color: '#32325d',
+                        fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
+                        fontSmoothing: 'antialiased',
+                        fontSize: '16px',
+                        '::placeholder': {
+                            color: '#aab7c4'
+                        }
+                    },
+                    invalid: {
+                        color: '#fa755a',
+                        iconColor: '#fa755a'
                     }
-                }, 1000);
+                }
             });
-        }
-        
-        function useEmergencyKey() {
-            console.warn('Using emergency fallback Stripe key');
-            window.stripePublishableKey = FALLBACK_KEY;
+            card.mount('#card-element');
             
-            // Show warning to user
-            const paymentMessage = document.querySelector('#payment-message');
-            if (paymentMessage) {
-                paymentMessage.classList.remove('hidden');
-                paymentMessage.textContent = 'Note: Using backup payment system. Your transaction is still secure.';
-                paymentMessage.style.color = '#f59e0b';
-                paymentMessage.style.padding = '10px';
-                paymentMessage.style.marginBottom = '10px';
-            }
+            // Handle real-time validation errors from the card Element
+            card.on('change', function(event) {
+                const displayError = document.getElementById('card-errors');
+                if (event.error) {
+                    displayError.textContent = event.error.message;
+                } else {
+                    displayError.textContent = '';
+                }
+            });
             
-            loadStripeScript();
-        }
-        
-        function loadStripeScript() {
-            console.log('Loading Stripe script');
-            const script = document.createElement('script');
-            script.src = '/script.js';
-            script.defer = true;
-            script.onerror = handleScriptError;
-            document.body.appendChild(script);
-            console.log('Script added to page');
-        }
-        
-        function handleScriptError() {
-            console.error('Failed to load script.js');
-            const paymentElement = document.querySelector('#payment-element');
-            if (paymentElement) {
-                paymentElement.innerHTML = `
-                    <div style="border: 1px solid #e0e0e0; padding: 20px; border-radius: 4px; text-align: center;">
-                        <p style="color: #f87171; margin: 0 0 10px 0;">Payment form currently unavailable</p>
-                        <p style="margin: 0;">Please try refreshing the page or contact support.</p>
-                    </div>
-                `;
+            // Populate state dropdown
+            const stateSelect = document.querySelector("#state");
+            if (stateSelect) {
+                const states = {
+                    'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas', 'CA': 'California',
+                    'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware', 'FL': 'Florida', 'GA': 'Georgia',
+                    'HI': 'Hawaii', 'ID': 'Idaho', 'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa',
+                    'KS': 'Kansas', 'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine', 'MD': 'Maryland',
+                    'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota', 'MS': 'Mississippi', 'MO': 'Missouri',
+                    'MT': 'Montana', 'NE': 'Nebraska', 'NV': 'Nevada', 'NH': 'New Hampshire', 'NJ': 'New Jersey',
+                    'NM': 'New Mexico', 'NY': 'New York', 'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio',
+                    'OK': 'Oklahoma', 'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island', 'SC': 'South Carolina',
+                    'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 'UT': 'Utah', 'VT': 'Vermont',
+                    'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming'
+                };
+
+                Object.entries(states).forEach(([code, name]) => {
+                    const option = document.createElement('option');
+                    option.value = code;
+                    option.textContent = name;
+                    stateSelect.appendChild(option);
+                });
             }
-        }
+
+            // Handle form submission
+            document.querySelector("#payment-form").addEventListener("submit", function(e) {
+                e.preventDefault();
+                
+                // Show loading state
+                const submitButton = document.querySelector("#submit-button");
+                const spinner = document.querySelector("#spinner");
+                const buttonText = document.querySelector("#button-text");
+                
+                // Prevent double-submissions
+                if (submitButton.disabled) {
+                    return;
+                }
+                
+                submitButton.disabled = true;
+                spinner.classList.remove("hidden");
+                buttonText.classList.add("hidden");
+                
+                // Collect form data
+                const formData = {};
+                ['firstName', 'lastName', 'email', 'phone', 'street', 'apt', 'city', 'zip', 'country', 'state'].forEach(field => {
+                    const element = document.getElementById(field);
+                    if (element) {
+                        formData[field] = element.value;
+                    }
+                });
+                
+                // Create payment method with card
+                stripe.createPaymentMethod({
+                    type: 'card',
+                    card: card,
+                    billing_details: {
+                        name: `${formData.firstName} ${formData.lastName}`,
+                        email: formData.email,
+                        phone: formData.phone,
+                        address: {
+                            line1: formData.street,
+                            line2: formData.apt || '',
+                            city: formData.city,
+                            postal_code: formData.zip,
+                            country: formData.country,
+                            state: formData.state
+                        }
+                    }
+                }).then(function(result) {
+                    if (result.error) {
+                        // Show error to customer
+                        const errorElement = document.getElementById('card-errors');
+                        errorElement.textContent = result.error.message;
+                        resetButton();
+                    } else {
+                        // Send the payment method ID to your server
+                        fetch('/submit-form', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                ...formData,
+                                paymentMethod: result.paymentMethod.id
+                            })
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Server error: ' + response.status);
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            if (data.success) {
+                                // Redirect to success page
+                                window.location.href = data.redirectUrl || `/success.html?id=${data.ambassadorId || 'amb_' + Math.random().toString(36).substr(2, 9)}`;
+                            } else {
+                                // Show error
+                                const errorElement = document.getElementById('card-errors');
+                                errorElement.textContent = data.error || 'An error occurred. Please try again.';
+                                resetButton();
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Submission error:', error);
+                            const errorElement = document.getElementById('card-errors');
+                            errorElement.textContent = 'An unexpected error occurred. Please try again.';
+                            resetButton();
+                        });
+                    }
+                });
+                
+                function resetButton() {
+                    submitButton.disabled = false;
+                    spinner.classList.add("hidden");
+                    buttonText.classList.remove("hidden");
+                }
+            });
+        });
     </script>
 </body>
 </html> 
