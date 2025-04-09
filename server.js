@@ -27,6 +27,9 @@ app.get('/success', (req, res) => {
 
 // Serve Stripe publishable key
 app.get('/stripe-key', (req, res) => {
+  if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
+    return res.status(500).json({ error: 'Stripe publishable key not found' });
+  }
   res.json({ key: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY });
 });
 

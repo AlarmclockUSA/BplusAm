@@ -1,6 +1,4 @@
-// Initialize Stripe
-const stripe = Stripe(window.stripePublishableKey);
-
+let stripe;
 let elements;
 let formData = {};
 
@@ -18,6 +16,9 @@ const getAffiliateData = () => {
 
 // Initialize Stripe Elements
 const initialize = async () => {
+    // Initialize Stripe instance
+    stripe = Stripe(window.stripePublishableKey);
+
     const response = await fetch("/create-payment-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
