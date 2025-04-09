@@ -101,6 +101,8 @@ const affiliateParams = storeUrlParameters();
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM Content Loaded');
+    
     // Populate states immediately
     populateStateDropdown();
     
@@ -110,6 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
     
+    console.log('Initializing Stripe with key:', window.stripePublishableKey);
     const stripe = Stripe(window.stripePublishableKey);
     const elements = stripe.elements();
     
@@ -132,8 +135,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    console.log('Mounting Stripe card element');
     // Mount the card Element
+    const cardElement = document.getElementById('card-element');
+    if (!cardElement) {
+        console.error('Card element not found in DOM');
+        return;
+    }
     card.mount('#card-element');
+    console.log('Stripe card element mounted');
 
     // Handle real-time validation errors
     card.addEventListener('change', function(event) {
