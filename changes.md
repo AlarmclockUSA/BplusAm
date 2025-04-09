@@ -1,85 +1,76 @@
-# Changes Log
+# Project Changes Log
 
-## Initial Setup - [Current Date]
+## Initial Setup
+- [Date: Current] Project initialized with Git repository
+- Server configuration running on port 3003
 
-1. Created basic project structure
-    - Created `index.html` with a clean form structure
-    - Created `styles.css` with modern, minimal styling
+## Current State Analysis
+- Project appears to be in very early stages of development
+- Server.js file is referenced but not found in the workspace
+- Basic Git repository structure is in place 
 
-2. Development Environment Setup
-    - Started local development server on port 8000
+## Payment Portal Setup
+- [Date: Current] Implemented Stripe payment portal with the following components:
+  - Created .env file with Stripe credentials
+  - Set up package.json with required dependencies
+  - Implemented server.js with Express and Stripe integration
+  - Created public directory with:
+    - index.html (payment form with Stripe Elements)
+    - styles.css (responsive design)
+    - app.js (Stripe Elements integration)
+  - Features implemented:
+    - Credit card capture using Stripe Elements
+    - Billing form with:
+      - Full Name
+      - Phone Number
+      - Billing Address
+    - Mobile-responsive design
+    - Error handling and validation
+    - Success/failure messaging
 
-3. Form Implementation
-    - Updated HTML structure to match design requirements
-    - Implemented dark theme styling
-    - Added all form fields:
-        - Name input
-        - Email input
-        - Phone input
-        - Company input
-        - Website input
-        - Country selector
-        - Revenue selector
-        - Terms of Service checkbox
-    - Added form disclaimer
-    - Styled with modern dark theme UI
+## Form Structure Update
+- [Date: Current] Separated billing information into distinct sections:
+  - Personal Information section
+    - Full Name
+    - Phone Number
+  - Billing Address section
+    - Street Address
+    - City
+    - State
+    - ZIP Code
+  - Payment Information section
+    - Credit Card details
+  - Visual improvements:
+    - Added section headers
+    - Improved form layout with flexbox
+    - Enhanced mobile responsiveness
+    - Added visual feedback for form interactions
+    - Improved spacing and visual hierarchy
 
-4. Brilliant Plus Branding Update
-    - Changed main heading to "Become a Brilliant Plus ambassador today"
-    - Updated subtitle to reference ambassador dashboard
-    - Updated disclaimer text with Brilliant Plus branding
-    - Changed page title
-    - Updated font stack to system fonts
+## Affiliate Tracking Implementation
+- [Date: Current] Added URL parameter handling and storage:
+  - Implemented path parameter parsing and storage in localStorage
+  - Added affiliate data to payment intent metadata
+  - Prepared Zapier integration points
+  - Features:
+    - Captures path parameter (e.g., /matthigham254)
+    - Stores path parameter as 'affiliate_path' in localStorage
+    - Optionally stores any query parameters with 'affiliate_' prefix
+    - Passes affiliate data through payment flow
+    - Prepared for Zapier webhook integration
 
-5. Two-Column Layout Implementation
-    - Restructured HTML to support two-column layout
-    - Added responsive flexbox-based layout
-    - Increased container width to 1200px
-    - Added media queries for mobile responsiveness
-    - Adjusted heading size and spacing
-    - Optimized column widths and gaps
-
-6. Background Enhancement
-    - Added Brilliant gradient background image
-    - Implemented semi-transparent form container
-    - Added backdrop blur effect
-    - Enhanced shadow for better depth
-    - Ensured background image covers viewport properly
-
-7. Color Scheme Update
-    - Changed accent color to #54967D (bright sage green)
-    - Updated all interactive elements to match new color
-    - Adjusted hover states for better contrast (#478469)
-    - Maintained white text on colored backgrounds
-    - Updated focus states on form inputs
-
-8. Terms of Service Implementation
-    - Replaced agency question with Terms of Service checkbox
-    - Added custom checkbox styling with animation
-    - Implemented modal for Terms of Service content
-    - Added modal backdrop with blur effect
-    - Created responsive modal layout
-    - Added close functionality (button and outside click)
-    - Styled modal content with proper hierarchy
-    - Added scroll functionality for long content
-
-### Details
-- Set up responsive HTML boilerplate with meta tags
-- Added comprehensive form styling
-    - Semi-transparent dark theme with blur effect
-    - Accent color: #54967D (sage green)
-    - Custom checkbox styling
-    - Custom select dropdowns
-    - Responsive layout
-    - Modern input styling
-    - Modal overlay with backdrop blur
-- Launched Python HTTP server for local development
-- Implemented responsive design
-    - Desktop: Two-column layout
-    - Mobile: Single-column layout
-    - Breakpoint at 768px
-
-Next steps:
-- Implement form validation
-- Add API integration
-- Add form submission handling 
+## Two-Column Layout Implementation
+- [Date: Current] Added two-column layout with program information:
+  - Left Column:
+    - Program title and sign-in link
+    - Benefits list with checkmarks
+    - Pricing information
+    - Program description
+  - Right Column:
+    - Payment form with all sections
+  - Visual improvements:
+    - Responsive design that stacks on mobile
+    - Consistent spacing and typography
+    - Clear visual hierarchy
+    - Improved readability
+    - Enhanced mobile experience 

@@ -1,101 +1,70 @@
-import express from 'express';
-import path from 'path';
-import cors from 'cors';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-import Stripe from 'stripe';
-import dotenv from 'dotenv';
-
-// Initialize dotenv
-dotenv.config();
-
-// Get directory name for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const path = require('path');
 
 const app = express();
+const port = process.env.PORT || 3003;
 
-// Enable CORS
+// Middleware
 app.use(cors());
+app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Parse JSON bodies
-app.use(express.json());
-
-// Serve static files from the current directory
-app.use(express.static(path.join(__dirname, '.')));
-
-// Configuration endpoint - only returns Stripe publishable key
-app.get('/api/config', (req, res) => {
-    try {
-        res.json({
-            stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY
-        });
-    } catch (error) {
-        console.error('Error in /api/config:', error);
-        res.status(500).json({ error: 'Failed to load configuration' });
-    }
+// Handle successful payment and redirect
+app.post('/payment-success', async (req, res) => {
+  try {
+    const { paymentIntent, affiliateData } = req.body;
+    
+    // Generate ambassador ID
+    const ambassadorId = 'amb_' + Math.random().toString(36).substr(2, 9);
+    
+    // Here you can:
+    // 1. Store the payment and affiliate data in your database
+    // 2. Send the data to Zapier
+    // 3. Trigger any other necessary actions
+    
+    res.json({ 
+      success: true,
+      redirectUrl: `/success.html?id=${ambassadorId}`
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
-// Payment creation endpoint
-app.post('/api/create-payment', async (req, res) => {
-    try {
-        const { payment_method_id, formData } = req.body;
+// Create payment intent
+app.post('/create-payment-intent', async (req, res) => {
+  try {
+    const { affiliateData } = req.body;
+    
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: 1000, // Amount in cents
+      currency: 'usd',
+      automatic_payment_methods: {
+        enabled: true,
+      },
+      metadata: {
+        ...affiliateData,
+        source_url: affiliateData.source_url || 'direct'
+      }
+    });
 
-        // Create a payment intent with metadata
-        const paymentIntent = await stripe.paymentIntents.create({
-            amount: 1000, // $10.00 in cents
-            currency: 'usd',
-            payment_method: payment_method_id,
-            confirm: true,
-            metadata: {
-                firstName: formData.firstName,
-                lastName: formData.lastName,
-                email: formData.email,
-                phone: formData.phone,
-                street1: formData.street1,
-                street2: formData.street2 || '',
-                city: formData.city,
-                province: formData.province,
-                postalCode: formData.postalCode,
-                country: formData.country,
-                source: 'Ambassador Program Signup'
-            },
-            description: 'Ambassador Program Annual Fee',
-            statement_descriptor: 'AMBASSADOR FEE',
-            return_url: `${req.protocol}://${req.get('host')}/success.html`
-        });
-
-        if (paymentIntent.status === 'succeeded') {
-            res.json({ success: true });
-        } else if (paymentIntent.status === 'requires_action') {
-            res.json({
-                requires_action: true,
-                client_secret: paymentIntent.client_secret
-            });
-        } else {
-            res.status(400).json({ error: 'Payment failed' });
-        }
-    } catch (error) {
-        console.error('Error in /api/create-payment:', error);
-        res.status(500).json({ error: error.message });
-    }
+    res.json({
+      clientSecret: paymentIntent.client_secret,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
-// Serve index.html for all other routes
+// Serve the payment page for all routes
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ error: 'Something went wrong!' });
-});
-
-const PORT = process.env.PORT || 3003;
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
 }); 
