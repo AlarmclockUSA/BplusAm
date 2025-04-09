@@ -1,11 +1,21 @@
 // API Configuration
 const API_CONFIG = {
+    LOCAL_URL: 'http://localhost:3003',
     STAGING_URL: 'https://api.brilliantplus.app',
     PRODUCTION_URL: 'https://api.brilliantplus.app',
     ENDPOINTS: {
         CREATE_CONSULTANT: '/api/Consultants/CreateConsultant'
     }
 };
+
+// Get the base URL based on environment
+function getBaseUrl() {
+    if (window.location.hostname === 'localhost') {
+        return API_CONFIG.LOCAL_URL;
+    }
+    // For now, default to staging for all other environments
+    return API_CONFIG.STAGING_URL;
+}
 
 // Initialize the form display
 function initializeForm() {
@@ -63,7 +73,32 @@ const authTokens = {
 
 // Initialize all event listeners
 function initializeFormEventListeners() {
-    // ... rest of your existing code ...
+    const form = document.getElementById('contactForm');
+    if (form) {
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if (!validateStep1()) return;
+            
+            // Store form data
+            formData = {
+                firstName: document.getElementById('firstName').value,
+                lastName: document.getElementById('lastName').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                street1: document.getElementById('street1').value,
+                street2: document.getElementById('street2').value,
+                city: document.getElementById('city').value,
+                postalCode: document.getElementById('postalCode').value,
+                country: document.getElementById('country').value,
+                province: document.getElementById('province').value
+            };
+            
+            // Handle payment submission
+            await handlePaymentSubmission(e);
+        });
+    }
+    
+    // ... rest of your event listeners ...
 }
 
 // Validate address fields
@@ -89,8 +124,8 @@ let cardElement;
 
 async function initializeStripe() {
     try {
-        // Fetch configuration from server
-        const response = await fetch('/api/config');
+        // Fetch configuration from server using the correct base URL
+        const response = await fetch(`${getBaseUrl()}/api/config`);
         if (!response.ok) {
             throw new Error(`Server returned ${response.status}: ${response.statusText}`);
         }
@@ -230,35 +265,15 @@ function validateStep1() {
     return isValid;
 }
 
-// Step 1: Basic Information Form with Payment
-document.getElementById('contactForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
+// Handle form submission
+async function handlePaymentSubmission(event) {
+    event.preventDefault();
     
-    if (!validateStep1()) return;
-
-    const submitButton = this.querySelector('button[type="submit"]');
+    const submitButton = document.getElementById('submit-button');
     submitButton.disabled = true;
-    submitButton.textContent = 'Processing...';
-    const errorElement = document.getElementById('card-errors');
-    errorElement.textContent = '';
-
+    
     try {
-        // Store form data
-        formData = {
-            firstName: document.getElementById('firstName').value,
-            lastName: document.getElementById('lastName').value,
-            email: document.getElementById('email').value,
-            phone: document.getElementById('phone').value,
-            street1: document.getElementById('street1').value,
-            street2: document.getElementById('street2').value,
-            city: document.getElementById('city').value,
-            postalCode: document.getElementById('postalCode').value,
-            country: document.getElementById('country').value,
-            province: document.getElementById('province').value
-        };
-
-        // Create payment method using the card element
-        const { paymentMethod, error } = await stripe.createPaymentMethod({
+        const { paymentMethod } = await stripe.createPaymentMethod({
             type: 'card',
             card: cardElement,
             billing_details: {
@@ -267,7 +282,7 @@ document.getElementById('contactForm').addEventListener('submit', async function
                 phone: formData.phone,
                 address: {
                     line1: formData.street1,
-                    line2: formData.street2,
+                    line2: formData.street2 || '',
                     city: formData.city,
                     state: formData.province,
                     postal_code: formData.postalCode,
@@ -276,15 +291,11 @@ document.getElementById('contactForm').addEventListener('submit', async function
             }
         });
 
-        if (error) {
-            throw error;
-        }
-
-        // Send payment method ID to your server
-        const response = await fetch('/api/create-payment', {
+        // Create payment using the correct base URL
+        const response = await fetch(`${getBaseUrl()}/api/create-payment`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 payment_method_id: paymentMethod.id,
@@ -292,32 +303,45 @@ document.getElementById('contactForm').addEventListener('submit', async function
             })
         });
 
+        if (!response.ok) {
+            throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+        }
+
         const result = await response.json();
 
-        if (result.error) {
-            throw new Error(result.error);
-        }
-
-        // Handle subscription confirmation
-        if (result.status === 'requires_action') {
-            const { error: confirmError } = await stripe.confirmCardPayment(
-                result.client_secret
-            );
-
-            if (confirmError) {
-                throw confirmError;
+        if (result.requires_action) {
+            // Handle additional authentication if required
+            const { paymentIntent, error } = await stripe.handleCardAction(result.client_secret);
+            
+            if (error) {
+                throw new Error(error.message);
             }
-
-            showSuccess(result.subscriptionId);
+            
+            // Confirm the payment after authentication
+            const confirmResponse = await fetch(`${getBaseUrl()}/api/confirm-payment`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    payment_intent_id: paymentIntent.id
+                })
+            });
+            
+            if (!confirmResponse.ok) {
+                throw new Error('Payment confirmation failed');
+            }
         }
-        
+
+        // Payment successful
+        window.location.href = '/success.html';
     } catch (error) {
         console.error('Payment error:', error);
+        const errorElement = document.getElementById('card-errors');
         errorElement.textContent = error.message;
         submitButton.disabled = false;
-        submitButton.textContent = 'Confirm and Create Account';
     }
-});
+}
 
 // Generate a random password that meets requirements
 function generateRandomPassword() {
