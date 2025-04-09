@@ -104,8 +104,22 @@ app.post('/create-payment-intent', async (req, res) => {
     const priceId = process.env.STRIPE_PRICE_ID;
     console.log(`Using price ID: ${priceId}`);
     
+    // Make sure the price ID is valid
+    if (!priceId) {
+      throw new Error('Missing STRIPE_PRICE_ID environment variable');
+    }
+    
     // Retrieve the price to get the amount
-    const price = await stripe.prices.retrieve(priceId);
+    let price;
+    try {
+      price = await stripe.prices.retrieve(priceId);
+    } catch (priceError) {
+      console.error(`Error retrieving price: ${priceError.message}`);
+      // Fall back to a fixed amount if price retrieval fails
+      return res.json({
+        error: 'Price retrieval failed. Please contact support.'
+      });
+    }
     
     // Create a payment intent with the price
     const paymentIntent = await stripe.paymentIntents.create({

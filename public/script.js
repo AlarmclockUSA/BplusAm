@@ -18,16 +18,8 @@ const getAffiliateData = () => {
 // Initialize Stripe Elements
 const initialize = async () => {
     try {
-        // Fetch the publishable key from the server
-        const response = await fetch('/stripe-key');
-        if (!response.ok) {
-            throw new Error('Failed to fetch Stripe publishable key');
-        }
-        
-        const { publishableKey } = await response.json();
-        if (!publishableKey) {
-            throw new Error('No publishable key returned from server');
-        }
+        // Use the publishable key directly
+        const publishableKey = 'pk_live_XR5M7XE6egOwx6NnAsCgTzgz00w9tprsTh';
         
         // Initialize Stripe
         stripe = Stripe(publishableKey);
@@ -110,8 +102,13 @@ const handleSubmit = async (e) => {
     const errorElement = document.getElementById('card-errors');
     
     try {
+        // Determine the correct base URL for API calls
+        const baseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? '' // Empty for local development (relative URL)
+            : window.location.origin; // Full origin for production
+        
         // Create payment intent on the server
-        const createIntentResponse = await fetch('/create-payment-intent', {
+        const createIntentResponse = await fetch(`${baseUrl}/create-payment-intent`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
