@@ -1,10 +1,10 @@
 import express from 'express';
+import path from 'path';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import path from 'path';
 import Stripe from 'stripe';
+import dotenv from 'dotenv';
 
 // Initialize dotenv
 dotenv.config();
@@ -13,111 +13,75 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const app = express();
-const PORT = process.env.PORT || 3001;
-const NODE_ENV = process.env.NODE_ENV || 'development';
-
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-// Enable CORS for all routes
+const app = express();
+
+// Enable CORS
 app.use(cors());
+
+// Parse JSON bodies
 app.use(express.json());
+
+// Serve static files from the current directory
 app.use(express.static(path.join(__dirname, '.')));
 
-// Create payment endpoint
-app.post('/api/create-payment', async (req, res) => {
-    try {
-        const { payment_method_id, formData } = req.body;
-
-        if (!payment_method_id || !formData) {
-            return res.status(400).json({
-                success: false,
-                error: 'Missing required payment information'
-            });
-        }
-
-        console.log('Creating subscription with metadata:', {
-            source: "Ambassador Only Funnel",
-            ...formData
-        });
-
-        // Create a customer
-        const customer = await stripe.customers.create({
-            payment_method: payment_method_id,
-            email: formData.email,
-            name: `${formData.firstName} ${formData.lastName}`,
-            phone: formData.phone,
-            address: {
-                line1: formData.street1,
-                line2: formData.street2,
-                city: formData.city,
-                state: formData.province,
-                postal_code: formData.postalCode,
-                country: formData.country
-            }
-        });
-
-        // Create the subscription with the specific price ID
-        const subscription = await stripe.subscriptions.create({
-            customer: customer.id,
-            items: [{ price: process.env.STRIPE_PRICE_ID }],
-            payment_behavior: 'default_incomplete',
-            payment_settings: { save_default_payment_method: 'on_subscription' },
-            expand: ['latest_invoice.payment_intent'],
-            metadata: {
-                source: "Ambassador Only Funnel",
-                ...formData
-            }
-        });
-
-        // Return the client secret for payment confirmation
-        return res.json({
-            success: true,
-            status: 'requires_action',
-            client_secret: subscription.latest_invoice.payment_intent.client_secret,
-            subscriptionId: subscription.id
-        });
-
-    } catch (error) {
-        console.error('Subscription creation error:', error);
-        return res.status(500).json({
-            success: false,
-            error: error.message || 'An error occurred while creating the subscription'
-        });
-    }
-});
-
-// Add endpoint to get configuration
+// Configuration endpoint
 app.get('/api/config', (req, res) => {
     try {
-        const config = {
-            stripePublishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
-            priceId: process.env.STRIPE_PRICE_ID,
-            environment: NODE_ENV
-        };
-
-        // Log the config (without sensitive data)
-        console.log('Serving config:', {
-            hasPublishableKey: !!config.stripePublishableKey,
-            hasPriceId: !!config.priceId,
-            environment: config.environment
+        res.json({
+            stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+            priceId: process.env.STRIPE_PRICE_ID
         });
-
-        if (!config.stripePublishableKey || !config.priceId) {
-            throw new Error('Missing required Stripe configuration');
-        }
-
-        res.json(config);
     } catch (error) {
-        console.error('Config endpoint error:', error);
-        res.status(500).json({
-            error: 'Failed to load configuration',
-            details: error.message
-        });
+        console.error('Error in /api/config:', error);
+        res.status(500).json({ error: 'Failed to load configuration' });
     }
 });
 
+// Payment creation endpoint
+app.post('/api/create-payment', async (req, res) => {
+    try {
+        const { payment_method_id, price_id, formData } = req.body;
+
+        // Create a payment intent
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: 1000, // $10.00 in cents
+            currency: 'usd',
+            payment_method: payment_method_id,
+            confirm: true,
+            return_url: `${req.protocol}://${req.get('host')}/success.html`
+        });
+
+        if (paymentIntent.status === 'succeeded') {
+            res.json({ success: true });
+        } else if (paymentIntent.status === 'requires_action') {
+            res.json({
+                requires_action: true,
+                client_secret: paymentIntent.client_secret
+            });
+        } else {
+            res.status(400).json({ error: 'Payment failed' });
+        }
+    } catch (error) {
+        console.error('Error in /api/create-payment:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Catch-all route to serve index.html for all other requests
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ error: 'Something went wrong!' });
+});
+
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT} in ${NODE_ENV} mode`);
+    console.log(`Server is running on port ${PORT}`);
 }); 

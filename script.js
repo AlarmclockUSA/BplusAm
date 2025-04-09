@@ -140,11 +140,23 @@ async function initializeStripe() {
                 displayError.textContent = '';
             }
         });
+
+        // Enable the form submit button
+        const submitButton = document.getElementById('submit-button');
+        if (submitButton) {
+            submitButton.disabled = false;
+        }
     } catch (error) {
         console.error('Failed to initialize Stripe:', error);
         const errorElement = document.getElementById('card-errors');
         errorElement.textContent = `Payment system error: ${error.message}. Please try again later or contact support.`;
         errorElement.style.color = '#ff4444';
+        
+        // Disable the form submit button
+        const submitButton = document.getElementById('submit-button');
+        if (submitButton) {
+            submitButton.disabled = true;
+        }
     }
 }
 
