@@ -65,9 +65,14 @@ app.post('/create-payment-intent', async (req, res) => {
       console.error('Missing Stripe secret key');
       return res.status(500).json({ error: 'Stripe secret key is missing' });
     }
+
+    if (!process.env.STRIPE_PRICE_ID) {
+      console.error('Missing Stripe price ID');
+      return res.status(500).json({ error: 'Stripe price ID is missing' });
+    }
     
-    console.log('Retrieving price from Stripe');
-    const price = await stripe.prices.retrieve('price_1RBgAMEWsQ0IpmHOfLYH1MPt');
+    console.log(`Retrieving price from Stripe with ID: ${process.env.STRIPE_PRICE_ID}`);
+    const price = await stripe.prices.retrieve(process.env.STRIPE_PRICE_ID);
     console.log(`Price retrieved: ${price.unit_amount} ${price.currency}`);
     
     console.log('Creating payment intent with Stripe');

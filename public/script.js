@@ -34,10 +34,13 @@ const initialize = async () => {
         });
         
         if (!response.ok) {
-            throw new Error(`Failed to create payment intent: ${response.statusText}`);
+            const errorText = await response.text();
+            console.error('Response not OK:', response.status, errorText);
+            throw new Error(`Failed to create payment intent: ${response.status} ${response.statusText}`);
         }
         
         const data = await response.json();
+        console.log('Payment intent response:', data);
         const { clientSecret } = data;
         
         if (!clientSecret) {
@@ -54,9 +57,17 @@ const initialize = async () => {
             },
         };
 
+        console.log('Creating Stripe Elements with client secret');
         elements = stripe.elements({ appearance, clientSecret });
 
+        console.log('Creating payment element');
         const paymentElement = elements.create("payment");
+        
+        console.log('Mounting payment element to #payment-element');
+        const mountElement = document.querySelector('#payment-element');
+        if (!mountElement) {
+            throw new Error('Payment element mount target not found in DOM');
+        }
         paymentElement.mount("#payment-element");
         console.log('Stripe Elements mounted successfully');
     } catch (error) {
