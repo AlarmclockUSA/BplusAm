@@ -1,10 +1,10 @@
 import express from 'express';
 import cors from 'cors';
-import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import path from 'path';
+import Stripe from 'stripe';
 
 // Initialize dotenv
 dotenv.config();
@@ -14,41 +14,73 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
-const port = 8000;
+const PORT = process.env.PORT || 3001;
+
+// Initialize Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // Enable CORS for all routes
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '.')));
 
-// API proxy endpoint
-app.post('/api/create-consultant', async (req, res) => {
+// Create payment endpoint
+app.post('/api/create-payment', async (req, res) => {
     try {
-        console.log('Received request:', req.body);
-        
-        const response = await fetch('https://api.brilliantplus.app/api/Consultants/CreateConsultant', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${process.env.API_ACCESS_TOKEN}`,
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(req.body)
+        const { payment_method_id, price_id, formData } = req.body;
+
+        if (!payment_method_id || !price_id || !formData) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required payment information'
+            });
+        }
+
+        console.log('Creating payment with metadata:', {
+            source: "Ambassador Only Funnel",
+            ...formData
         });
 
-        const data = await response.json();
-        console.log('API Response:', data);
-        
-        res.json(data);
+        // Create a payment intent
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: 1000, // $10.00 in cents
+            currency: 'usd',
+            payment_method: payment_method_id,
+            confirm: true,
+            return_url: `${req.headers.origin}/success.html`,
+            description: "Ambassador Registration Fee",
+            statement_descriptor: "BRILLIANT PLUS",
+            metadata: {
+                source: "Ambassador Only Funnel",
+                ...formData
+            }
+        });
+
+        if (paymentIntent.status === 'succeeded') {
+            return res.json({
+                success: true,
+                client_secret: paymentIntent.client_secret
+            });
+        } else if (paymentIntent.status === 'requires_action') {
+            return res.json({
+                success: false,
+                payment_intent_client_secret: paymentIntent.client_secret
+            });
+        } else {
+            return res.status(400).json({
+                success: false,
+                error: 'Payment failed'
+            });
+        }
     } catch (error) {
-        console.error('Proxy error:', error);
-        res.status(500).json({
-            error: 'Failed to proxy request',
-            details: error.message
+        console.error('Payment processing error:', error);
+        return res.status(500).json({
+            success: false,
+            error: error.message || 'An error occurred while processing the payment'
         });
     }
 });
 
-app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
 }); 

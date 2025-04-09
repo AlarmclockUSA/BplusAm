@@ -1,61 +1,59 @@
 # Brilliant Plus Ambassador Portal
 
-This repository contains the frontend code for the Brilliant Plus Ambassador signup portal.
+A web application for managing Brilliant Plus ambassadors, handling registrations, and processing payments.
 
 ## Setup
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/AlarmclockUSA/BplusAm.git
-cd BplusAm
+git clone [repository-url]
+cd [repository-name]
 ```
 
-2. Set up environment variables:
-   - Copy `.env.example` to `.env`
-   - Fill in your API credentials in `.env`
-
-3. Install dependencies:
+2. Install dependencies:
 ```bash
 npm install
 ```
 
+3. Configure API keys:
+   - Copy `maps-config.template.js` to `maps-config.js`
+   - Copy `stripe-config.template.js` to `stripe-config.js`
+   - Add your actual API keys to these files
+
 4. Start the development server:
 ```bash
-npm start
+node server.js
 ```
 
 ## Environment Variables
 
-The following environment variables are required:
+The following environment variables need to be set:
 
-- `API_PERSON_IDENTIFIER`: Your API username
-- `API_PERSON_TYPE_ID`: Your person type ID
-- `API_ACCESS_TOKEN`: Your API access token
-- `API_REFRESH_TOKEN`: Your API refresh token
-- `API_TOKEN_EXPIRES`: Access token expiry date
-- `API_REFRESH_TOKEN_EXPIRES`: Refresh token expiry date
-
-## API Authentication
-
-The application uses token-based authentication. The authentication flow is as follows:
-
-1. Initial authentication using person identifier and type ID
-2. Automatic token refresh when the access token is about to expire
-3. Secure storage of tokens in memory (not persisted)
+- `STRIPE_SECRET_KEY`: Your Stripe secret key
+- `STRIPE_PUBLISHABLE_KEY`: Your Stripe publishable key
+- `STRIPE_WEBHOOK_SECRET`: Your Stripe webhook secret
+- `GOOGLE_MAPS_API_KEY`: Your Google Maps API key
 
 ## Security Notes
 
-- Never commit the `.env` file to version control
-- Keep your API credentials secure
-- The application uses secure headers and sanitizes sensitive data in logs
-- SSN information is handled securely and never logged
+- Never commit API keys or sensitive information to the repository
+- Always use environment variables for sensitive data in production
+- Keep the `maps-config.js` and `stripe-config.js` files in your `.gitignore`
 
 ## Development
 
-- The application uses ES6 modules
-- Authentication is handled in `auth.js`
-- Main application logic is in `script.js`
-- Styles are in `styles.css`
+- The application uses vanilla JavaScript for the frontend
+- Stripe Elements for payment processing
+- Google Maps API for address autocomplete
+
+## Production Deployment
+
+Before deploying to production:
+
+1. Ensure all API keys are properly set in your production environment
+2. Set up proper SSL certificates for secure communication
+3. Configure your web server to serve static files efficiently
+4. Set up proper error logging and monitoring
 
 ## Contributing
 
@@ -65,4 +63,4 @@ The application uses token-based authentication. The authentication flow is as f
 
 ## License
 
-Proprietary - All rights reserved 
+[Your License Here] 
