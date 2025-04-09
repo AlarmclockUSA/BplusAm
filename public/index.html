@@ -127,9 +127,13 @@
             .then(data => {
                 console.log('Stripe key received from server:', data);
                 if (!data || !data.key) {
-                    throw new Error('Invalid Stripe key response from server');
+                    // Fallback for production if server doesn't return a key
+                    console.log('Using hardcoded fallback key for production');
+                    window.stripePublishableKey = 'pk_live_XR5M7XE6egOwx6NnAsCgTzgz00w9tprsh';
+                } else {
+                    window.stripePublishableKey = data.key;
                 }
-                window.stripePublishableKey = data.key;
+                
                 // Initialize Stripe after getting the key
                 const script = document.createElement('script');
                 script.src = '/script.js';
@@ -139,8 +143,18 @@
             })
             .catch(error => {
                 console.error('Error fetching Stripe key:', error);
+                // Fallback for production if fetch fails completely
+                console.log('Using hardcoded fallback key after fetch error');
+                window.stripePublishableKey = 'pk_live_XR5M7XE6egOwx6NnAsCgTzgz00w9tprsh';
+                
+                // Still try to load the script
+                const script = document.createElement('script');
+                script.src = '/script.js';
+                script.defer = true;
+                document.body.appendChild(script);
+                
                 document.querySelector('#payment-message').classList.remove('hidden');
-                document.querySelector('#payment-message').textContent = `Error: ${error.message}`;
+                document.querySelector('#payment-message').textContent = `Warning: Using fallback configuration. ${error.message}`;
             });
     </script>
 </body>
