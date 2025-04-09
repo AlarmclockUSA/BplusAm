@@ -15,6 +15,7 @@ const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const NODE_ENV = process.env.NODE_ENV || 'development';
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -27,60 +28,75 @@ app.use(express.static(path.join(__dirname, '.')));
 // Create payment endpoint
 app.post('/api/create-payment', async (req, res) => {
     try {
-        const { payment_method_id, price_id, formData } = req.body;
+        const { payment_method_id, formData } = req.body;
 
-        if (!payment_method_id || !price_id || !formData) {
+        if (!payment_method_id || !formData) {
             return res.status(400).json({
                 success: false,
                 error: 'Missing required payment information'
             });
         }
 
-        console.log('Creating payment with metadata:', {
+        console.log('Creating subscription with metadata:', {
             source: "Ambassador Only Funnel",
             ...formData
         });
 
-        // Create a payment intent
-        const paymentIntent = await stripe.paymentIntents.create({
-            amount: 1000, // $10.00 in cents
-            currency: 'usd',
+        // Create a customer
+        const customer = await stripe.customers.create({
             payment_method: payment_method_id,
-            confirm: true,
-            return_url: `${req.headers.origin}/success.html`,
-            description: "Ambassador Registration Fee",
-            statement_descriptor: "BRILLIANT PLUS",
+            email: formData.email,
+            name: `${formData.firstName} ${formData.lastName}`,
+            phone: formData.phone,
+            address: {
+                line1: formData.street1,
+                line2: formData.street2,
+                city: formData.city,
+                state: formData.province,
+                postal_code: formData.postalCode,
+                country: formData.country
+            }
+        });
+
+        // Create the subscription with the specific price ID
+        const subscription = await stripe.subscriptions.create({
+            customer: customer.id,
+            items: [{ price: process.env.STRIPE_PRICE_ID }],
+            payment_behavior: 'default_incomplete',
+            payment_settings: { save_default_payment_method: 'on_subscription' },
+            expand: ['latest_invoice.payment_intent'],
             metadata: {
                 source: "Ambassador Only Funnel",
                 ...formData
             }
         });
 
-        if (paymentIntent.status === 'succeeded') {
-            return res.json({
-                success: true,
-                client_secret: paymentIntent.client_secret
-            });
-        } else if (paymentIntent.status === 'requires_action') {
-            return res.json({
-                success: false,
-                payment_intent_client_secret: paymentIntent.client_secret
-            });
-        } else {
-            return res.status(400).json({
-                success: false,
-                error: 'Payment failed'
-            });
-        }
+        // Return the client secret for payment confirmation
+        return res.json({
+            success: true,
+            status: 'requires_action',
+            client_secret: subscription.latest_invoice.payment_intent.client_secret,
+            subscriptionId: subscription.id
+        });
+
     } catch (error) {
-        console.error('Payment processing error:', error);
+        console.error('Subscription creation error:', error);
         return res.status(500).json({
             success: false,
-            error: error.message || 'An error occurred while processing the payment'
+            error: error.message || 'An error occurred while creating the subscription'
         });
     }
 });
 
+// Add endpoint to get configuration
+app.get('/api/config', (req, res) => {
+    res.json({
+        stripePublishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+        priceId: process.env.STRIPE_PRICE_ID,
+        environment: NODE_ENV
+    });
+});
+
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+    console.log(`Server is running on port ${PORT} in ${NODE_ENV} mode`);
 }); 

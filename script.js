@@ -82,32 +82,64 @@ function validateAddressFields() {
     return isValid;
 }
 
-// Initialize Stripe
-const stripe = Stripe('pk_test_DwrxvvSXR0xIThDAYUZaBhCL00wU59gL2i');
+// Initialize Stripe with configuration from server
+let stripe;
+let elements;
+let cardElement;
 
-// Create card Element with updated styling
-const elements = stripe.elements();
-const cardElement = elements.create('card', {
-    style: {
-        base: {
-            color: '#000',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-            fontSize: '16px',
-            fontSmoothing: 'antialiased',
-            '::placeholder': {
-                color: '#666'
+async function initializeStripe() {
+    try {
+        // Fetch configuration from server
+        const response = await fetch('/api/config');
+        const config = await response.json();
+
+        // Initialize Stripe with publishable key
+        stripe = Stripe(config.stripePublishableKey);
+
+        // Create card Element with updated styling
+        elements = stripe.elements();
+        cardElement = elements.create('card', {
+            style: {
+                base: {
+                    color: '#000',
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                    fontSize: '16px',
+                    fontSmoothing: 'antialiased',
+                    '::placeholder': {
+                        color: '#666'
+                    },
+                    ':-webkit-autofill': {
+                        color: '#000'
+                    }
+                },
+                invalid: {
+                    color: '#ff4444',
+                    iconColor: '#ff4444'
+                }
             },
-            ':-webkit-autofill': {
-                color: '#000'
+            hidePostalCode: true
+        });
+
+        // Mount the card element
+        cardElement.mount('#card-element');
+
+        // Handle real-time validation errors
+        cardElement.on('change', function(event) {
+            const displayError = document.getElementById('card-errors');
+            if (event.error) {
+                displayError.textContent = event.error.message;
+            } else {
+                displayError.textContent = '';
             }
-        },
-        invalid: {
-            color: '#ff4444',
-            iconColor: '#ff4444'
-        }
-    },
-    hidePostalCode: true
-});
+        });
+    } catch (error) {
+        console.error('Failed to initialize Stripe:', error);
+        document.getElementById('card-errors').textContent = 'Failed to initialize payment system. Please try again later.';
+    }
+}
+
+// Initialize Stripe when the page loads
+document.addEventListener('DOMContentLoaded', initializeStripe);
 
 // Store form data between steps
 let formData = {};
@@ -203,30 +235,62 @@ document.getElementById('contactForm').addEventListener('submit', async function
             province: document.getElementById('province').value
         };
 
-        // Redirect to Stripe Checkout
-        // This is the most reliable approach without a backend server
-        stripe.redirectToCheckout({
-            lineItems: [
-                {price: 'price_1R42MJEWsQ0IpmHOWcDQ5KvC', quantity: 1}
-            ],
-            mode: 'payment',
-            successUrl: window.location.origin + '?step=thank-you&session_id={CHECKOUT_SESSION_ID}',
-            cancelUrl: window.location.origin,
-            customerEmail: formData.email,
-            billingAddressCollection: 'required',
-            clientReferenceId: `${formData.firstName}-${formData.lastName}-${Date.now()}`
-        }).then(function(result) {
-            if (result.error) {
-                // If redirectToCheckout fails due to a browser or network
-                // error, display the localized error message to your customer
-                errorElement.textContent = result.error.message;
-                submitButton.disabled = false;
-                submitButton.textContent = 'Confirm and Create Account';
+        // Create payment method using the card element
+        const { paymentMethod, error } = await stripe.createPaymentMethod({
+            type: 'card',
+            card: cardElement,
+            billing_details: {
+                name: `${formData.firstName} ${formData.lastName}`,
+                email: formData.email,
+                phone: formData.phone,
+                address: {
+                    line1: formData.street1,
+                    line2: formData.street2,
+                    city: formData.city,
+                    state: formData.province,
+                    postal_code: formData.postalCode,
+                    country: formData.country
+                }
             }
         });
+
+        if (error) {
+            throw error;
+        }
+
+        // Send payment method ID to your server
+        const response = await fetch('/api/create-payment', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                payment_method_id: paymentMethod.id,
+                formData: formData
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.error) {
+            throw new Error(result.error);
+        }
+
+        // Handle subscription confirmation
+        if (result.status === 'requires_action') {
+            const { error: confirmError } = await stripe.confirmCardPayment(
+                result.client_secret
+            );
+
+            if (confirmError) {
+                throw confirmError;
+            }
+
+            showSuccess(result.subscriptionId);
+        }
         
     } catch (error) {
-        console.error('Stripe error:', error);
+        console.error('Payment error:', error);
         errorElement.textContent = error.message;
         submitButton.disabled = false;
         submitButton.textContent = 'Confirm and Create Account';
