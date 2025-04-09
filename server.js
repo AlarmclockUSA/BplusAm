@@ -8,23 +8,22 @@ const path = require('path');
 const app = express();
 const port = process.env.PORT || 3003;
 
+// Set up EJS
+app.engine('html', require('ejs').renderFile);
+app.set('view engine', 'html');
+app.set('views', path.join(__dirname, 'public'));
+
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
-
-// Inject Stripe key and serve static files
-app.use('/', (req, res, next) => {
-  if (req.path === '/') {
-    res.send(`
-      <script>window.stripePublishableKey = '${process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}';</script>
-      ${require('fs').readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8')}
-    `);
-  } else {
-    next();
-  }
-});
-
 app.use(express.static('public'));
+
+// Serve index.html with environment variables
+app.get('/', (req, res) => {
+  res.render('index.html', {
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  });
+});
 
 // Handle successful payment and redirect
 app.post('/payment-success', async (req, res) => {

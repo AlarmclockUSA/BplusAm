@@ -20,7 +20,7 @@ npm install
 
 2. Create a `.env` file with your Stripe credentials:
 ```
-STRIPE_PUBLISHABLE_KEY=your_publishable_key
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_publishable_key
 STRIPE_SECRET_KEY=your_secret_key
 STRIPE_PRICE_ID=your_price_id
 ```

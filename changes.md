@@ -79,3 +79,9 @@
 - [Date: Current] Updated remote repository configuration:
   - Changed remote origin URL from https://github.com/AlarmclockUSA/BplusAm.git to https://github.com/AlarmclockUSA/BAF.git
   - Verified successful update of remote URL 
+
+## Stripe Integration Changes
+1. Added Stripe publishable key as EJS variable in index.html
+2. Updated script.js to use the Stripe publishable key from window variable
+3. Added Stripe script and stylesheet links to index.html
+4. Updated README.md to use correct environment variable name (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) 
