@@ -97,6 +97,7 @@
 14. Simplified server configuration to use static files
 15. Added separate endpoint for Stripe publishable key
 16. Updated frontend to fetch Stripe key from server
+17. Fixed static file serving to use absolute paths
 
 ## Stripe Integration Changes
 1. Added Stripe publishable key as EJS variable in index.html

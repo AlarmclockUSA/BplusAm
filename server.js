@@ -6,18 +6,23 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const path = require('path');
 
 const app = express();
-const port = process.env.PORT || 3003;
+const port = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
 
 // Serve static files from public directory
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Serve index.html with environment variables
+// Serve index.html for root route
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Serve success.html
+app.get('/success', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'success.html'));
 });
 
 // Serve Stripe publishable key
@@ -43,7 +48,7 @@ app.post('/payment-success', async (req, res) => {
 app.post('/create-payment-intent', async (req, res) => {
   try {
     const { affiliateData } = req.body;
-    const price = await stripe.prices.retrieve(process.env.STRIPE_PRICE_ID);
+    const price = await stripe.prices.retrieve('price_1RBgAMEWsQ0IpmHOfLYH1MPtz');
     
     const paymentIntent = await stripe.paymentIntents.create({
       amount: price.unit_amount,
@@ -52,14 +57,13 @@ app.post('/create-payment-intent', async (req, res) => {
         enabled: true,
       },
       metadata: {
-        ...affiliateData,
-        source_url: affiliateData.source_url || 'direct',
-        price_id: process.env.STRIPE_PRICE_ID
+        source: 'Ambassador Only Funnel',
+        source_url: affiliateData?.source_url || 'direct'
       }
     });
 
     res.json({
-      clientSecret: paymentIntent.client_secret,
+      clientSecret: paymentIntent.client_secret
     });
   } catch (error) {
     console.error('Error creating payment intent:', error);
