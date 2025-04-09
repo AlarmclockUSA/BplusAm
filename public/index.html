@@ -115,47 +115,114 @@
         </div>
     </div>
     <script>
-        // Fetch the Stripe key from the server
-        console.log('Fetching Stripe publishable key from server');
-        fetch('/stripe-key')
+        // Define a hardcoded fallback key for emergencies
+        const FALLBACK_KEY = 'pk_live_XR5M7XE6egOwx6NnAsCgTzgz00w9tprsh';
+        let keyFetchAttempts = 0;
+        const MAX_KEY_FETCH_ATTEMPTS = 3;
+        
+        // First check for cached key in localStorage
+        const cachedKey = localStorage.getItem('stripe_publishable_key');
+        if (cachedKey) {
+            console.log('Using cached Stripe key from localStorage');
+            window.stripePublishableKey = cachedKey;
+            loadStripeScript();
+        } else {
+            fetchStripeKey();
+        }
+        
+        function fetchStripeKey() {
+            if (keyFetchAttempts >= MAX_KEY_FETCH_ATTEMPTS) {
+                console.error(`Failed to fetch Stripe key after ${MAX_KEY_FETCH_ATTEMPTS} attempts`);
+                useEmergencyKey();
+                return;
+            }
+            
+            keyFetchAttempts++;
+            console.log(`Fetching Stripe publishable key from server (attempt ${keyFetchAttempts})`);
+            
+            fetch('/stripe-key', {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                // Add credentials to ensure cookies are sent with the request
+                credentials: 'include',
+                // Set a timeout for the request
+                signal: AbortSignal.timeout(5000)
+            })
             .then(response => {
                 if (!response.ok) {
-                    throw new Error(`Failed to fetch Stripe key: ${response.statusText}`);
+                    throw new Error(`Failed to fetch Stripe key: ${response.status} ${response.statusText}`);
                 }
                 return response.json();
             })
             .then(data => {
                 console.log('Stripe key received from server:', data);
                 if (!data || !data.key) {
-                    // Fallback for production if server doesn't return a key
-                    console.log('Using hardcoded fallback key for production');
-                    window.stripePublishableKey = 'pk_live_XR5M7XE6egOwx6NnAsCgTzgz00w9tprsh';
-                } else {
-                    window.stripePublishableKey = data.key;
+                    throw new Error('Invalid Stripe key response from server');
                 }
                 
-                // Initialize Stripe after getting the key
-                const script = document.createElement('script');
-                script.src = '/script.js';
-                script.defer = true;
-                document.body.appendChild(script);
-                console.log('Added script.js to page');
+                // Cache the key for future use
+                window.stripePublishableKey = data.key;
+                localStorage.setItem('stripe_publishable_key', data.key);
+                
+                // Load Stripe script
+                loadStripeScript();
             })
             .catch(error => {
                 console.error('Error fetching Stripe key:', error);
-                // Fallback for production if fetch fails completely
-                console.log('Using hardcoded fallback key after fetch error');
-                window.stripePublishableKey = 'pk_live_XR5M7XE6egOwx6NnAsCgTzgz00w9tprsh';
                 
-                // Still try to load the script
-                const script = document.createElement('script');
-                script.src = '/script.js';
-                script.defer = true;
-                document.body.appendChild(script);
-                
-                document.querySelector('#payment-message').classList.remove('hidden');
-                document.querySelector('#payment-message').textContent = `Warning: Using fallback configuration. ${error.message}`;
+                // Retry or use fallback
+                setTimeout(() => {
+                    if (keyFetchAttempts < MAX_KEY_FETCH_ATTEMPTS) {
+                        fetchStripeKey();
+                    } else {
+                        useEmergencyKey();
+                    }
+                }, 1000);
             });
+        }
+        
+        function useEmergencyKey() {
+            console.warn('Using emergency fallback Stripe key');
+            window.stripePublishableKey = FALLBACK_KEY;
+            
+            // Show warning to user
+            const paymentMessage = document.querySelector('#payment-message');
+            if (paymentMessage) {
+                paymentMessage.classList.remove('hidden');
+                paymentMessage.textContent = 'Note: Using backup payment system. Your transaction is still secure.';
+                paymentMessage.style.color = '#f59e0b';
+                paymentMessage.style.padding = '10px';
+                paymentMessage.style.marginBottom = '10px';
+            }
+            
+            loadStripeScript();
+        }
+        
+        function loadStripeScript() {
+            console.log('Loading Stripe script');
+            const script = document.createElement('script');
+            script.src = '/script.js';
+            script.defer = true;
+            script.onerror = handleScriptError;
+            document.body.appendChild(script);
+            console.log('Script added to page');
+        }
+        
+        function handleScriptError() {
+            console.error('Failed to load script.js');
+            const paymentElement = document.querySelector('#payment-element');
+            if (paymentElement) {
+                paymentElement.innerHTML = `
+                    <div style="border: 1px solid #e0e0e0; padding: 20px; border-radius: 4px; text-align: center;">
+                        <p style="color: #f87171; margin: 0 0 10px 0;">Payment form currently unavailable</p>
+                        <p style="margin: 0;">Please try refreshing the page or contact support.</p>
+                    </div>
+                `;
+            }
+        }
     </script>
 </body>
 </html> 

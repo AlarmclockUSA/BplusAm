@@ -54,25 +54,71 @@ const initialize = async () => {
             variables: {
                 colorPrimary: '#7fb69e',
                 fontFamily: 'Inter, system-ui, sans-serif',
+                borderRadius: '4px',
+                colorBackground: '#ffffff',
+                colorText: '#30313d',
+                colorDanger: '#df1b41',
+                fontWeightNormal: '500',
+                spacingUnit: '4px'
             },
+            rules: {
+                '.Label': {
+                    marginBottom: '8px',
+                    fontSize: '14px'
+                },
+                '.Input': {
+                    padding: '12px',
+                    border: '1px solid #e0e0e0',
+                    boxShadow: 'none'
+                }
+            }
         };
 
         console.log('Creating Stripe Elements with client secret');
         elements = stripe.elements({ appearance, clientSecret });
 
         console.log('Creating payment element');
-        const paymentElement = elements.create("payment");
+        const paymentElement = elements.create("payment", {
+            layout: {
+                type: 'tabs',
+                defaultCollapsed: false
+            }
+        });
         
         console.log('Mounting payment element to #payment-element');
         const mountElement = document.querySelector('#payment-element');
         if (!mountElement) {
             throw new Error('Payment element mount target not found in DOM');
         }
+        
+        // Clear out any existing content or error messages
+        mountElement.innerHTML = '';
+        
         paymentElement.mount("#payment-element");
         console.log('Stripe Elements mounted successfully');
+        
+        // Add some visual indication that the element loaded
+        mountElement.style.transition = 'all 0.3s ease';
+        mountElement.style.boxShadow = '0 0 0 2px rgba(127, 182, 158, 0.3)';
+        setTimeout(() => {
+            mountElement.style.boxShadow = 'none';
+        }, 1500);
+        
     } catch (error) {
         console.error('Error initializing Stripe:', error);
         showMessage(`Error: ${error.message}`);
+        
+        // Show a visual fallback
+        const mountElement = document.querySelector('#payment-element');
+        if (mountElement) {
+            mountElement.innerHTML = `
+                <div style="border: 1px solid #e0e0e0; padding: 20px; border-radius: 4px; text-align: center; min-height: 150px; display: flex; flex-direction: column; justify-content: center;">
+                    <p style="color: #f87171; margin: 0 0 10px 0;">Payment form could not be loaded</p>
+                    <p style="margin: 0 0 15px 0;">Please try refreshing the page.</p>
+                    <button onclick="location.reload()" style="background-color: #7fb69e; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Refresh Page</button>
+                </div>
+            `;
+        }
     }
 };
 

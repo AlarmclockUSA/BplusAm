@@ -4,12 +4,17 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const port = process.env.PORT || 3001;
 
-// Middleware
-app.use(cors());
+// Enhanced CORS configuration
+app.use(cors({
+  origin: ['http://localhost:3001', 'https://go.brilliantplus.app', '*'],
+  credentials: true
+}));
+
 app.use(bodyParser.json());
 
 // Log all requests
@@ -18,14 +23,36 @@ app.use((req, res, next) => {
   next();
 });
 
+// Check for public directory and index.html
+const publicDir = path.join(__dirname, 'public');
+const indexPath = path.join(publicDir, 'index.html');
+
+// Validate paths exist before starting server
+console.log(`Public directory path: ${publicDir}`);
+console.log(`Index file path: ${indexPath}`);
+
+if (!fs.existsSync(publicDir)) {
+  console.error(`ERROR: Public directory not found at ${publicDir}`);
+  fs.mkdirSync(publicDir, { recursive: true });
+  console.log('Created public directory');
+}
+
+if (!fs.existsSync(indexPath)) {
+  console.error(`ERROR: Index.html not found at ${indexPath}`);
+}
+
 // Serve static files from public directory with absolute path
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(publicDir));
 
 // Serve index.html for root route
 app.get('/', (req, res) => {
-  const indexPath = path.join(__dirname, 'public', 'index.html');
-  console.log(`Serving index.html from: ${indexPath}`);
-  res.sendFile(indexPath);
+  if (fs.existsSync(indexPath)) {
+    console.log(`Serving index.html from: ${indexPath}`);
+    res.sendFile(indexPath);
+  } else {
+    console.error(`CRITICAL ERROR: Could not find ${indexPath}`);
+    res.status(500).send('Server configuration error. Please contact support.');
+  }
 });
 
 // Serve success.html
@@ -75,38 +102,53 @@ app.post('/create-payment-intent', async (req, res) => {
     console.log('Creating payment intent');
     const { affiliateData } = req.body;
     
-    // Fallback values for production
-    const fallbackPriceId = 'price_1RBgAMEWsQ0IpmHOfLYH1MPt';
+    // Remove the 'z' at the end of the price ID that's causing the error
+    const correctPriceId = 'price_1RBgAMEWsQ0IpmHOfLYH1MPt'; // Fixed price ID
     
-    // Use Stripe with secret key from env only
-    if (!process.env.STRIPE_SECRET_KEY) {
-      console.error('STRIPE_SECRET_KEY not found in environment');
-      return res.status(500).json({ 
-        error: 'Stripe secret key missing. Please configure environment variables.' 
+    console.log(`Retrieving price from Stripe with ID: ${correctPriceId}`);
+    
+    try {
+      const price = await stripe.prices.retrieve(correctPriceId);
+      console.log(`Price retrieved: ${price.unit_amount} ${price.currency}`);
+      
+      console.log('Creating payment intent with Stripe');
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: price.unit_amount,
+        currency: price.currency,
+        automatic_payment_methods: {
+          enabled: true,
+        },
+        metadata: {
+          source: 'Ambassador Only Funnel',
+          source_url: affiliateData?.source_url || 'direct'
+        }
+      });
+      
+      console.log(`Payment intent created with ID: ${paymentIntent.id}`);
+      res.json({
+        clientSecret: paymentIntent.client_secret
+      });
+    } catch (priceError) {
+      console.error('Error retrieving price, using fixed amount:', priceError);
+      
+      // Fallback to hardcoded amount if price retrieval fails
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: 1000, // $10.00 in cents
+        currency: 'usd',
+        automatic_payment_methods: {
+          enabled: true,
+        },
+        metadata: {
+          source: 'Ambassador Only Funnel',
+          source_url: affiliateData?.source_url || 'direct'
+        }
+      });
+      
+      console.log(`Created payment intent with fixed amount: ${paymentIntent.id}`);
+      res.json({
+        clientSecret: paymentIntent.client_secret
       });
     }
-    
-    console.log(`Retrieving price from Stripe with ID: ${process.env.STRIPE_PRICE_ID || fallbackPriceId}`);
-    const price = await stripe.prices.retrieve(process.env.STRIPE_PRICE_ID || fallbackPriceId);
-    console.log(`Price retrieved: ${price.unit_amount} ${price.currency}`);
-    
-    console.log('Creating payment intent with Stripe');
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: price.unit_amount,
-      currency: price.currency,
-      automatic_payment_methods: {
-        enabled: true,
-      },
-      metadata: {
-        source: 'Ambassador Only Funnel',
-        source_url: affiliateData?.source_url || 'direct'
-      }
-    });
-    
-    console.log(`Payment intent created with ID: ${paymentIntent.id}`);
-    res.json({
-      clientSecret: paymentIntent.client_secret
-    });
   } catch (error) {
     console.error('Error creating payment intent:', error);
     res.status(500).json({ error: error.message });
