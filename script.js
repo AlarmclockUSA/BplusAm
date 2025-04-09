@@ -32,6 +32,8 @@ function initializeForm() {
 // Main initialization
 document.addEventListener('DOMContentLoaded', function() {
     const urlParams = new URLSearchParams(window.location.search);
+    
+    // Check if returning from Stripe checkout
     if (urlParams.get('step') === 'thank-you') {
         // Hide the content column for thank you page
         const contentColumn = document.querySelector('.content-column');
@@ -39,8 +41,11 @@ document.addEventListener('DOMContentLoaded', function() {
             contentColumn.style.display = 'none';
         }
         
-        // Show mock data for testing
-        showSuccess('testUser123');
+        // Get the session ID from the URL
+        const sessionId = urlParams.get('session_id');
+        
+        // Show success screen with the session ID
+        showSuccess(sessionId || 'N/A');
     } else {
         // Initialize the form normally
         initializeForm();
@@ -198,80 +203,71 @@ document.getElementById('contactForm').addEventListener('submit', async function
             province: document.getElementById('province').value
         };
 
-        // Create payment method
-        const {error, paymentMethod} = await stripe.createPaymentMethod({
-            type: 'card',
-            card: cardElement,
-            billing_details: {
-                name: `${formData.firstName} ${formData.lastName}`,
-                email: formData.email,
-                phone: formData.phone,
-                address: {
-                    line1: formData.street1,
-                    line2: formData.street2 || '',
-                    city: formData.city,
-                    state: formData.province,
-                    postal_code: formData.postalCode,
-                    country: formData.country
-                }
+        // Redirect to Stripe Checkout
+        // This is the most reliable approach without a backend server
+        stripe.redirectToCheckout({
+            lineItems: [
+                {price: 'price_1R42MJEWsQ0IpmHOWcDQ5KvC', quantity: 1}
+            ],
+            mode: 'payment',
+            successUrl: window.location.origin + '?step=thank-you&session_id={CHECKOUT_SESSION_ID}',
+            cancelUrl: window.location.origin,
+            customerEmail: formData.email,
+            billingAddressCollection: 'required',
+            clientReferenceId: `${formData.firstName}-${formData.lastName}-${Date.now()}`
+        }).then(function(result) {
+            if (result.error) {
+                // If redirectToCheckout fails due to a browser or network
+                // error, display the localized error message to your customer
+                errorElement.textContent = result.error.message;
+                submitButton.disabled = false;
+                submitButton.textContent = 'Confirm and Create Account';
             }
         });
-
-        if (error) {
-            throw error;
-        }
-
-        // Send payment data to server
-        const response = await fetch('/api/create-payment', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                payment_method_id: paymentMethod.id,
-                price_id: 'price_1R42MJEWsQ0IpmHOWcDQ5KvC',
-                formData: {
-                    firstName: formData.firstName,
-                    lastName: formData.lastName,
-                    email: formData.email,
-                    phone: formData.phone,
-                    street1: formData.street1,
-                    street2: formData.street2,
-                    city: formData.city,
-                    postalCode: formData.postalCode,
-                    country: formData.country,
-                    province: formData.province
-                }
-            })
-        });
-
-        const result = await response.json();
-
-        if (result.payment_intent_client_secret) {
-            // Payment requires additional action
-            const { error: confirmError } = await stripe.confirmCardPayment(
-                result.payment_intent_client_secret
-            );
-
-            if (confirmError) {
-                throw confirmError;
-            }
-            
-            // Payment successful after confirmation
-            showSuccess(result.subscription_id);
-        } else if (result.success) {
-            // Payment successful immediately
-            showSuccess(result.subscription_id);
-        } else {
-            throw new Error(result.error || 'Payment failed');
-        }
+        
     } catch (error) {
-        console.error('Payment error:', error);
+        console.error('Stripe error:', error);
         errorElement.textContent = error.message;
         submitButton.disabled = false;
-        submitButton.textContent = 'Pay $10 and Create Account';
+        submitButton.textContent = 'Confirm and Create Account';
     }
 });
+
+// Generate a random password that meets requirements
+function generateRandomPassword() {
+    const length = 12;
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()';
+    let password = '';
+    
+    // Ensure at least one uppercase, one lowercase, one number, and one special char
+    password += 'A'; // uppercase
+    password += 'a'; // lowercase
+    password += '1'; // number
+    password += '!'; // special
+    
+    // Fill the rest randomly
+    for (let i = 0; i < length - 4; i++) {
+        const randomIndex = Math.floor(Math.random() * charset.length);
+        password += charset[randomIndex];
+    }
+    
+    // Shuffle the password
+    return password.split('').sort(() => 0.5 - Math.random()).join('');
+}
+
+// Get province ID from state code
+function getProvinceID(stateCode) {
+    const stateMapping = {
+        'AL': 1, 'AK': 2, 'AZ': 3, 'AR': 4, 'CA': 5, 'CO': 6, 'CT': 7, 'DE': 8, 'FL': 9, 'GA': 10,
+        'HI': 11, 'ID': 12, 'IL': 13, 'IN': 14, 'IA': 15, 'KS': 16, 'KY': 17, 'LA': 18, 'ME': 19, 'MD': 20,
+        'MA': 21, 'MI': 22, 'MN': 23, 'MS': 24, 'MO': 25, 'MT': 26, 'NE': 27, 'NV': 28, 'NH': 29, 'NJ': 30,
+        'NM': 31, 'NY': 32, 'NC': 33, 'ND': 34, 'OH': 35, 'OK': 36, 'OR': 37, 'PA': 38, 'RI': 39, 'SC': 40,
+        'SD': 41, 'TN': 42, 'TX': 43, 'UT': 44, 'VT': 45, 'VA': 46, 'WA': 47, 'WV': 48, 'WI': 49, 'WY': 50,
+        'DC': 51
+    };
+    
+    return stateMapping[stateCode] || 5; // Default to California if not found
+}
 
 // Add back button functionality
 document.querySelectorAll('.back-button').forEach(button => {
@@ -606,7 +602,6 @@ function handleAmbassadorDisagree() {
     const ambassadorCheckbox = document.getElementById('ambassadorAgreement');
     if (ambassadorCheckbox) {
         ambassadorCheckbox.checked = false;
-        ambassadorCheckbox.dispatchEvent(new Event('change'));
     }
     closeAmbassadorModal();
 }
