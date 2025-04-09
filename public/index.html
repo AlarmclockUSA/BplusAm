@@ -6,9 +6,6 @@
     <title>Brilliant Plus Ambassador Program</title>
     <script src="https://js.stripe.com/v3/"></script>
     <link rel="stylesheet" href="styles.css">
-    <script>
-        window.stripePublishableKey = '<%= NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY %>';
-    </script>
 </head>
 <body>
     <div class="container">
@@ -117,6 +114,18 @@
             </div>
         </div>
     </div>
-    <script src="/script.js" defer></script>
+    <script>
+        // Fetch the Stripe key from the server
+        fetch('/stripe-key')
+            .then(response => response.json())
+            .then(data => {
+                window.stripePublishableKey = data.key;
+                // Initialize Stripe after getting the key
+                const script = document.createElement('script');
+                script.src = '/script.js';
+                script.defer = true;
+                document.body.appendChild(script);
+            });
+    </script>
 </body>
 </html> 

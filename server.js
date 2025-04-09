@@ -11,18 +11,18 @@ const port = process.env.PORT || 3003;
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
-app.use(express.static('public'));
 
-// Set up EJS after middleware
-app.engine('html', require('ejs').renderFile);
-app.set('view engine', 'html');
-app.set('views', path.join(__dirname, 'public'));
+// Serve static files from public directory
+app.use(express.static('public'));
 
 // Serve index.html with environment variables
 app.get('/', (req, res) => {
-  res.render('index', {
-    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-  });
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Serve Stripe publishable key
+app.get('/stripe-key', (req, res) => {
+  res.json({ key: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY });
 });
 
 // Handle successful payment and redirect
