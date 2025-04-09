@@ -16,7 +16,7 @@ app.use(bodyParser.json());
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Serve index.html with injected environment variables
+// Serve index.html with injected environment variables for root route
 app.get('/', (req, res) => {
   const indexPath = path.join(__dirname, 'public', 'index.html');
   fs.readFile(indexPath, 'utf8', (err, data) => {
@@ -87,10 +87,11 @@ app.post('/create-payment-intent', async (req, res) => {
   }
 });
 
-// Catch-all route to serve index.html for client-side routing
+// For all other routes, try to serve from public directory first, then fall back to index.html
 app.get('*', (req, res) => {
-  // First try to serve the actual file
   const filePath = path.join(__dirname, 'public', req.path);
+  
+  // Check if the file exists in public directory
   if (fs.existsSync(filePath)) {
     res.sendFile(filePath);
   } else {
