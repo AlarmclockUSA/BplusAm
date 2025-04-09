@@ -102,20 +102,40 @@ const handleSubmit = async (e) => {
     const errorElement = document.getElementById('card-errors');
     
     try {
-        // Production URL for brilliantplus.app
-        let endpointUrl;
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            // Local development
-            endpointUrl = '/create-payment-intent';
-        } else if (window.location.hostname === 'go.brilliantplus.app') {
-            // Production
-            endpointUrl = 'https://go.brilliantplus.app/create-payment-intent';
-        } else {
-            // Fallback to relative URL
-            endpointUrl = '/create-payment-intent';
+        // If on the live site, process payment differently
+        if (window.location.hostname === 'go.brilliantplus.app') {
+            // For the production environment, skip the payment and submit form directly
+            console.log('Production environment detected - direct form submission');
+            
+            // Submit the form data directly
+            const response = await fetch('/submit-form', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Form submission error:', response.status, errorText);
+                throw new Error(`Form submission failed`);
+            }
+            
+            // Parse JSON response
+            const data = await response.json();
+            if (data.success) {
+                // Generate ambassador ID if not provided
+                const ambassadorId = data.ambassadorId || ('amb_' + Math.random().toString(36).substr(2, 9));
+                // Redirect to success page
+                window.location.href = `/success.html?id=${ambassadorId}`;
+                return;
+            }
+            
+            throw new Error(data.error || 'An error occurred during form submission');
         }
         
-        console.log('Using payment endpoint URL:', endpointUrl);
+        // Local environment - use payment intent flow
+        console.log('Using local payment flow with intent');
+        const endpointUrl = '/create-payment-intent';
         
         // Create payment intent on the server
         const createIntentResponse = await fetch(endpointUrl, {
