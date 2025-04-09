@@ -12,12 +12,20 @@ const port = process.env.PORT || 3001;
 app.use(cors());
 app.use(bodyParser.json());
 
-// Serve static files from public directory
+// Log all requests
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
+
+// Serve static files from public directory with absolute path
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Serve index.html for root route
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  const indexPath = path.join(__dirname, 'public', 'index.html');
+  console.log(`Serving index.html from: ${indexPath}`);
+  res.sendFile(indexPath);
 });
 
 // Serve success.html
@@ -50,9 +58,19 @@ app.post('/payment-success', async (req, res) => {
 // Create payment intent
 app.post('/create-payment-intent', async (req, res) => {
   try {
+    console.log('Creating payment intent');
     const { affiliateData } = req.body;
-    const price = await stripe.prices.retrieve('price_1RBgAMEWsQ0IpmHOfLYH1MPtz');
     
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error('Missing Stripe secret key');
+      return res.status(500).json({ error: 'Stripe secret key is missing' });
+    }
+    
+    console.log('Retrieving price from Stripe');
+    const price = await stripe.prices.retrieve('price_1RBgAMEWsQ0IpmHOfLYH1MPt');
+    console.log(`Price retrieved: ${price.unit_amount} ${price.currency}`);
+    
+    console.log('Creating payment intent with Stripe');
     const paymentIntent = await stripe.paymentIntents.create({
       amount: price.unit_amount,
       currency: price.currency,
@@ -64,7 +82,8 @@ app.post('/create-payment-intent', async (req, res) => {
         source_url: affiliateData?.source_url || 'direct'
       }
     });
-
+    
+    console.log(`Payment intent created with ID: ${paymentIntent.id}`);
     res.json({
       clientSecret: paymentIntent.client_secret
     });

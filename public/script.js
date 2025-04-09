@@ -16,31 +16,53 @@ const getAffiliateData = () => {
 
 // Initialize Stripe Elements
 const initialize = async () => {
-    // Initialize Stripe instance
-    stripe = Stripe(window.stripePublishableKey);
+    try {
+        // Initialize Stripe instance
+        if (!window.stripePublishableKey) {
+            throw new Error('Stripe publishable key is missing');
+        }
+        
+        stripe = Stripe(window.stripePublishableKey);
+        console.log('Stripe initialized with publishable key');
 
-    const response = await fetch("/create-payment-intent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-            affiliateData: getAffiliateData()
-        }),
-    });
-    
-    const { clientSecret } = await response.json();
+        const response = await fetch("/create-payment-intent", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+                affiliateData: getAffiliateData()
+            }),
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Failed to create payment intent: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        const { clientSecret } = data;
+        
+        if (!clientSecret) {
+            throw new Error('No client secret returned from server');
+        }
 
-    const appearance = {
-        theme: 'stripe',
-        variables: {
-            colorPrimary: '#7fb69e',
-            fontFamily: 'Inter, system-ui, sans-serif',
-        },
-    };
+        console.log('Payment intent created successfully');
 
-    elements = stripe.elements({ appearance, clientSecret });
+        const appearance = {
+            theme: 'stripe',
+            variables: {
+                colorPrimary: '#7fb69e',
+                fontFamily: 'Inter, system-ui, sans-serif',
+            },
+        };
 
-    const paymentElement = elements.create("payment");
-    paymentElement.mount("#payment-element");
+        elements = stripe.elements({ appearance, clientSecret });
+
+        const paymentElement = elements.create("payment");
+        paymentElement.mount("#payment-element");
+        console.log('Stripe Elements mounted successfully');
+    } catch (error) {
+        console.error('Error initializing Stripe:', error);
+        showMessage(`Error: ${error.message}`);
+    }
 };
 
 // Collect form data

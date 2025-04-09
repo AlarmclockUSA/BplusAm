@@ -116,15 +116,31 @@
     </div>
     <script>
         // Fetch the Stripe key from the server
+        console.log('Fetching Stripe publishable key from server');
         fetch('/stripe-key')
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch Stripe key: ${response.statusText}`);
+                }
+                return response.json();
+            })
             .then(data => {
+                console.log('Stripe key received from server:', data);
+                if (!data || !data.key) {
+                    throw new Error('Invalid Stripe key response from server');
+                }
                 window.stripePublishableKey = data.key;
                 // Initialize Stripe after getting the key
                 const script = document.createElement('script');
                 script.src = '/script.js';
                 script.defer = true;
                 document.body.appendChild(script);
+                console.log('Added script.js to page');
+            })
+            .catch(error => {
+                console.error('Error fetching Stripe key:', error);
+                document.querySelector('#payment-message').classList.remove('hidden');
+                document.querySelector('#payment-message').textContent = `Error: ${error.message}`;
             });
     </script>
 </body>
