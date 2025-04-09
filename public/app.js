@@ -108,42 +108,54 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Initialize Stripe once we have the key
     if (!window.stripePublishableKey) {
-        console.error('Stripe publishable key not found');
+        console.error('Stripe publishable key not found. Current window object:', {
+            hasStripeKey: 'stripePublishableKey' in window,
+            windowKeys: Object.keys(window)
+        });
         return;
     }
     
-    console.log('Initializing Stripe with key:', window.stripePublishableKey);
-    const stripe = Stripe(window.stripePublishableKey);
-    const elements = stripe.elements();
+    console.log('Initializing Stripe with key:', window.stripePublishableKey.substring(0, 8) + '...');
     
-    // Create card Element
-    const card = elements.create('card', {
-        style: {
-            base: {
-                color: '#32325d',
-                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                fontSmoothing: 'antialiased',
-                fontSize: '16px',
-                '::placeholder': {
-                    color: '#aab7c4'
+    try {
+        const stripe = Stripe(window.stripePublishableKey);
+        const elements = stripe.elements();
+        
+        // Create card Element
+        const card = elements.create('card', {
+            style: {
+                base: {
+                    color: '#32325d',
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                    fontSmoothing: 'antialiased',
+                    fontSize: '16px',
+                    '::placeholder': {
+                        color: '#aab7c4'
+                    }
+                },
+                invalid: {
+                    color: '#dc3545',
+                    iconColor: '#dc3545'
                 }
-            },
-            invalid: {
-                color: '#dc3545',
-                iconColor: '#dc3545'
             }
-        }
-    });
+        });
 
-    console.log('Mounting Stripe card element');
-    // Mount the card Element
-    const cardElement = document.getElementById('card-element');
-    if (!cardElement) {
-        console.error('Card element not found in DOM');
-        return;
+        console.log('Mounting Stripe card element');
+        const cardElement = document.getElementById('card-element');
+        if (!cardElement) {
+            console.error('Card element not found in DOM. Current form elements:', {
+                form: document.getElementById('payment-form'),
+                cardElement: document.getElementById('card-element'),
+                cardErrors: document.getElementById('card-errors')
+            });
+            return;
+        }
+        
+        card.mount('#card-element');
+        console.log('Stripe card element mounted successfully');
+    } catch (error) {
+        console.error('Error initializing Stripe:', error);
     }
-    card.mount('#card-element');
-    console.log('Stripe card element mounted');
 
     // Handle real-time validation errors
     card.addEventListener('change', function(event) {
