@@ -3,57 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to Brilliant Plus Ambassador Program!</title>
-    <link rel="stylesheet" href="success-styles.css">
+    <title>Payment Successful - Brilliant Plus Ambassador Program</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body>
-    <div class="container">
-        <div class="success-card">
-            <div class="success-icon">
-                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                    <circle cx="16" cy="16" r="16" fill="#7fb69e" fill-opacity="0.1"/>
-                    <path d="M22 12L13.5 20.5L10 17" stroke="#7fb69e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-12 max-w-2xl">
+        <div class="bg-white rounded-lg shadow-lg p-8 text-center">
+            <div class="mb-8">
+                <svg class="mx-auto h-16 w-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                 </svg>
             </div>
 
-            <h1>Welcome to the Brilliant Ambassador Program!</h1>
+            <h1 class="text-3xl font-bold text-gray-900 mb-4">Welcome to the Ambassador Program!</h1>
             
-            <p class="subtitle">We're so excited to have you join our community! Your ambassador account is all set up and ready to go.</p>
-
-            <div class="details-card">
-                <h2>Your Ambassador Details</h2>
-                <div class="detail-row">
-                    <span class="detail-label">Ambassador ID</span>
-                    <span class="detail-value" id="ambassadorId"></span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Plan</span>
-                    <span class="detail-value">Annual Ambassador</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Status</span>
-                    <span class="detail-value status-active">Active</span>
-                </div>
-            </div>
-
-            <p class="next-steps">We've sent you an email with your login credentials and next steps to get started.</p>
-            
-            <p class="help-text">
-                If you don't see the email within a few minutes, please check your spam folder or reach out to us at
-                <a href="mailto:help@brilliantperspectives.com">help@brilliantperspectives.com</a>
+            <p class="text-lg text-gray-600 mb-8">
+                Your payment was successful and your ambassador account has been created.
             </p>
 
-            <div class="action-buttons">
-                <a href="/dashboard" class="primary-button">Go to Ambassador Dashboard</a>
-                <a href="https://brilliantplus.app" class="secondary-button">Download the App</a>
+            <div class="bg-gray-50 rounded-lg p-6 mb-8">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Your Ambassador ID</h2>
+                <p id="ambassador-id" class="text-lg font-mono bg-white p-3 rounded border"></p>
             </div>
+
+            <div class="space-y-4 text-left mb-8">
+                <h2 class="text-xl font-semibold text-gray-800 mb-2">Next Steps:</h2>
+                <ul class="list-disc list-inside space-y-2 text-gray-600">
+                    <li>Check your email for your welcome package</li>
+                    <li>Complete your ambassador profile</li>
+                    <li>Join our exclusive ambassador community</li>
+                    <li>Start sharing your unique referral link</li>
+                </ul>
+            </div>
+
+            <a href="/" class="inline-block bg-blue-600 text-white py-3 px-6 rounded-md hover:bg-blue-700 transition-colors">
+                Return to Homepage
+            </a>
         </div>
     </div>
+
     <script>
-        // Get ambassador ID from URL parameter and display it
-        const urlParams = new URLSearchParams(window.location.search);
-        const ambassadorId = urlParams.get('id') || 'amb_' + Math.random().toString(36).substr(2, 9);
-        document.getElementById('ambassadorId').textContent = ambassadorId;
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const ambassadorId = urlParams.get('id');
+            if (ambassadorId) {
+                document.getElementById('ambassador-id').textContent = ambassadorId;
+            }
+        });
     </script>
 </body>
 </html> 
