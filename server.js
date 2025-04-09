@@ -27,12 +27,11 @@ app.use(express.json());
 // Serve static files from the current directory
 app.use(express.static(path.join(__dirname, '.')));
 
-// Configuration endpoint
+// Configuration endpoint - only returns Stripe publishable key
 app.get('/api/config', (req, res) => {
     try {
         res.json({
-            stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
-            priceId: process.env.STRIPE_PRICE_ID
+            stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY
         });
     } catch (error) {
         console.error('Error in /api/config:', error);
@@ -43,14 +42,29 @@ app.get('/api/config', (req, res) => {
 // Payment creation endpoint
 app.post('/api/create-payment', async (req, res) => {
     try {
-        const { payment_method_id, price_id, formData } = req.body;
+        const { payment_method_id, formData } = req.body;
 
-        // Create a payment intent
+        // Create a payment intent with metadata
         const paymentIntent = await stripe.paymentIntents.create({
             amount: 1000, // $10.00 in cents
             currency: 'usd',
             payment_method: payment_method_id,
             confirm: true,
+            metadata: {
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                email: formData.email,
+                phone: formData.phone,
+                street1: formData.street1,
+                street2: formData.street2 || '',
+                city: formData.city,
+                province: formData.province,
+                postalCode: formData.postalCode,
+                country: formData.country,
+                source: 'Ambassador Program Signup'
+            },
+            description: 'Ambassador Program Annual Fee',
+            statement_descriptor: 'AMBASSADOR FEE',
             return_url: `${req.protocol}://${req.get('host')}/success.html`
         });
 
@@ -70,7 +84,7 @@ app.post('/api/create-payment', async (req, res) => {
     }
 });
 
-// Catch-all route to serve index.html for all other requests
+// Serve index.html for all other routes
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
@@ -81,7 +95,7 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Something went wrong!' });
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3003;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 }); 

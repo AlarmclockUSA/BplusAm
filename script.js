@@ -1,8 +1,8 @@
 // API Configuration
 const API_CONFIG = {
     LOCAL_URL: 'http://localhost:3003',
-    STAGING_URL: 'https://api.brilliantplus.app',
-    PRODUCTION_URL: 'https://api.brilliantplus.app',
+    STAGING_URL: 'https://api-staging-brilliantplus.app',
+    PRODUCTION_URL: 'https://api-brilliantplus.app',
     ENDPOINTS: {
         CREATE_CONSULTANT: '/api/Consultants/CreateConsultant'
     }
@@ -13,7 +13,11 @@ function getBaseUrl() {
     if (window.location.hostname === 'localhost') {
         return API_CONFIG.LOCAL_URL;
     }
-    // For now, default to staging for all other environments
+    // Check if we're in production
+    if (window.location.hostname.includes('brilliantplus.app') && !window.location.hostname.includes('staging')) {
+        return API_CONFIG.PRODUCTION_URL;
+    }
+    // Default to staging for development/testing
     return API_CONFIG.STAGING_URL;
 }
 
@@ -79,20 +83,6 @@ function initializeFormEventListeners() {
             e.preventDefault();
             if (!validateStep1()) return;
             
-            // Store form data
-            formData = {
-                firstName: document.getElementById('firstName').value,
-                lastName: document.getElementById('lastName').value,
-                email: document.getElementById('email').value,
-                phone: document.getElementById('phone').value,
-                street1: document.getElementById('street1').value,
-                street2: document.getElementById('street2').value,
-                city: document.getElementById('city').value,
-                postalCode: document.getElementById('postalCode').value,
-                country: document.getElementById('country').value,
-                province: document.getElementById('province').value
-            };
-            
             // Handle payment submission
             await handlePaymentSubmission(e);
         });
@@ -124,22 +114,62 @@ let cardElement;
 
 async function initializeStripe() {
     try {
-        // Fetch configuration from server using the correct base URL
-        const response = await fetch(`${getBaseUrl()}/api/config`);
+        const baseUrl = getBaseUrl();
+        console.log('Environment Details:', {
+            hostname: window.location.hostname,
+            baseUrl: baseUrl,
+            isProduction: window.location.hostname.includes('brilliantplus.app') && !window.location.hostname.includes('staging'),
+            fullUrl: `${baseUrl}/api/config`
+        });
+        
+        // Fetch configuration from server with detailed error handling
+        let response;
+        try {
+            response = await fetch(`${baseUrl}/api/config`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
+            console.log('Config Response Status:', response.status);
+        } catch (fetchError) {
+            console.error('Fetch Error Details:', {
+                error: fetchError,
+                message: fetchError.message,
+                type: fetchError.type,
+                url: `${baseUrl}/api/config`
+            });
+            throw new Error(`Network error: ${fetchError.message}`);
+        }
+
         if (!response.ok) {
-            throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+            const errorText = await response.text();
+            console.error('Config Error Response:', {
+                status: response.status,
+                statusText: response.statusText,
+                body: errorText,
+                headers: Object.fromEntries(response.headers.entries())
+            });
+            throw new Error(`Server error: ${response.status} ${response.statusText}`);
         }
         
         const config = await response.json();
+        console.log('Stripe Config:', {
+            hasPublishableKey: !!config.stripePublishableKey,
+            hasPriceId: !!config.priceId,
+            keyPrefix: config.stripePublishableKey ? config.stripePublishableKey.substring(0, 7) : null
+        });
         
         if (!config.stripePublishableKey) {
-            throw new Error('Stripe publishable key is missing');
+            throw new Error('Stripe publishable key is missing from server response');
         }
 
         // Initialize Stripe with publishable key
         stripe = Stripe(config.stripePublishableKey);
+        console.log('Stripe initialized successfully');
 
-        // Create card Element with updated styling
+        // Create card Element
         elements = stripe.elements();
         cardElement = elements.create('card', {
             style: {
@@ -165,12 +195,14 @@ async function initializeStripe() {
 
         // Mount the card element
         cardElement.mount('#card-element');
+        console.log('Card element mounted successfully');
 
         // Handle real-time validation errors
         cardElement.on('change', function(event) {
             const displayError = document.getElementById('card-errors');
             if (event.error) {
                 displayError.textContent = event.error.message;
+                console.error('Card validation error:', event.error);
             } else {
                 displayError.textContent = '';
             }
@@ -182,9 +214,22 @@ async function initializeStripe() {
             submitButton.disabled = false;
         }
     } catch (error) {
-        console.error('Failed to initialize Stripe:', error);
+        console.error('Stripe Initialization Error:', {
+            error: error,
+            message: error.message,
+            stack: error.stack,
+            baseUrl: getBaseUrl(),
+            hostname: window.location.hostname,
+            environment: {
+                protocol: window.location.protocol,
+                host: window.location.host,
+                pathname: window.location.pathname
+            }
+        });
+        
         const errorElement = document.getElementById('card-errors');
-        errorElement.textContent = `Payment system error: ${error.message}. Please try again later or contact support.`;
+        const errorMessage = error.message || 'Unknown error occurred';
+        errorElement.textContent = `Payment system error: ${errorMessage}. Please try again later or contact support.`;
         errorElement.style.color = '#ff4444';
         
         // Disable the form submit button
@@ -270,10 +315,28 @@ async function handlePaymentSubmission(event) {
     event.preventDefault();
     
     const submitButton = document.getElementById('submit-button');
-    submitButton.disabled = true;
+    const errorElement = document.getElementById('card-errors');
     
     try {
-        const { paymentMethod } = await stripe.createPaymentMethod({
+        submitButton.disabled = true;
+        errorElement.textContent = '';
+        
+        // Collect form data
+        const formData = {
+            firstName: document.getElementById('firstName').value,
+            lastName: document.getElementById('lastName').value,
+            email: document.getElementById('email').value,
+            phone: document.getElementById('phone').value,
+            street1: document.getElementById('street1').value,
+            street2: document.getElementById('street2').value || '',
+            city: document.getElementById('city').value,
+            province: document.getElementById('province').value,
+            postalCode: document.getElementById('postalCode').value,
+            country: document.getElementById('country').value
+        };
+
+        // Create payment method
+        const { paymentMethod, error } = await stripe.createPaymentMethod({
             type: 'card',
             card: cardElement,
             billing_details: {
@@ -282,7 +345,7 @@ async function handlePaymentSubmission(event) {
                 phone: formData.phone,
                 address: {
                     line1: formData.street1,
-                    line2: formData.street2 || '',
+                    line2: formData.street2,
                     city: formData.city,
                     state: formData.province,
                     postal_code: formData.postalCode,
@@ -291,8 +354,12 @@ async function handlePaymentSubmission(event) {
             }
         });
 
-        // Create payment using the correct base URL
-        const response = await fetch(`${getBaseUrl()}/api/create-payment`, {
+        if (error) {
+            throw error;
+        }
+
+        // Process payment
+        const response = await fetch('/api/create-payment', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -304,41 +371,32 @@ async function handlePaymentSubmission(event) {
         });
 
         if (!response.ok) {
-            throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Payment failed');
         }
 
         const result = await response.json();
 
         if (result.requires_action) {
-            // Handle additional authentication if required
-            const { paymentIntent, error } = await stripe.handleCardAction(result.client_secret);
+            // Handle 3D Secure authentication
+            const { paymentIntent, error: actionError } = await stripe.handleCardAction(result.client_secret);
             
-            if (error) {
-                throw new Error(error.message);
+            if (actionError) {
+                throw actionError;
             }
             
-            // Confirm the payment after authentication
-            const confirmResponse = await fetch(`${getBaseUrl()}/api/confirm-payment`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    payment_intent_id: paymentIntent.id
-                })
-            });
-            
-            if (!confirmResponse.ok) {
-                throw new Error('Payment confirmation failed');
-            }
+            // Payment successful after 3D Secure
+            window.location.href = '/success.html';
+        } else if (result.success) {
+            // Payment successful immediately
+            window.location.href = '/success.html';
+        } else {
+            throw new Error('Payment failed');
         }
-
-        // Payment successful
-        window.location.href = '/success.html';
     } catch (error) {
         console.error('Payment error:', error);
-        const errorElement = document.getElementById('card-errors');
         errorElement.textContent = error.message;
+        errorElement.style.color = '#ff4444';
         submitButton.disabled = false;
     }
 }
