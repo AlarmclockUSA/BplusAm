@@ -107,3 +107,9 @@
 5. Added direct error display in the form
 6. Improved payment flow with clear error handling and success redirection
 7. Removed redundant or complex code for a cleaner implementation 
+
+## Production Environment Fixes
+1. Hardcoded Stripe publishable key directly in script.js instead of fetching from server
+2. Added URL handling to create-payment-intent endpoint to work in both local and production environments
+3. Improved error handling for price retrieval in the server.js file
+4. Added additional validation for the STRIPE_PRICE_ID environment variable 
