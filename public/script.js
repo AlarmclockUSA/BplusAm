@@ -102,13 +102,23 @@ const handleSubmit = async (e) => {
     const errorElement = document.getElementById('card-errors');
     
     try {
-        // Determine the correct base URL for API calls
-        const baseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-            ? '' // Empty for local development (relative URL)
-            : window.location.origin; // Full origin for production
+        // Production URL for brilliantplus.app
+        let endpointUrl;
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            // Local development
+            endpointUrl = '/create-payment-intent';
+        } else if (window.location.hostname === 'go.brilliantplus.app') {
+            // Production
+            endpointUrl = 'https://go.brilliantplus.app/create-payment-intent';
+        } else {
+            // Fallback to relative URL
+            endpointUrl = '/create-payment-intent';
+        }
+        
+        console.log('Using payment endpoint URL:', endpointUrl);
         
         // Create payment intent on the server
-        const createIntentResponse = await fetch(`${baseUrl}/create-payment-intent`, {
+        const createIntentResponse = await fetch(endpointUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -117,11 +127,26 @@ const handleSubmit = async (e) => {
         });
         
         if (!createIntentResponse.ok) {
-            const errorData = await createIntentResponse.json();
-            throw new Error(errorData.error || 'Failed to create payment intent');
+            // Get the response text to better understand the error
+            const errorText = await createIntentResponse.text();
+            console.error('Payment intent response error:', createIntentResponse.status, errorText);
+            throw new Error(`Payment intent failed: ${createIntentResponse.status} ${createIntentResponse.statusText}`);
         }
         
-        const { clientSecret } = await createIntentResponse.json();
+        // Parse the response as JSON
+        const responseData = await createIntentResponse.json();
+        
+        // Check if the response contains an error
+        if (responseData.error) {
+            throw new Error(responseData.error);
+        }
+        
+        // Check if the response contains the client secret
+        if (!responseData.clientSecret) {
+            throw new Error('No client secret returned from server');
+        }
+        
+        const { clientSecret } = responseData;
         
         // Confirm card payment
         const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
