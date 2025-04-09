@@ -1,7 +1,7 @@
 {
   "name": "onboarding-brilliant-plus",
   "version": "1.0.0",
-  "description": "Stripe payment portal for Onboarding Brilliant Plus",
+  "description": "Onboarding portal for Brilliant Plus",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -12,8 +12,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "ejs": "^3.1.10",
-    "express": "^4.18.2",
-    "stripe": "^14.25.0"
+    "express": "^4.18.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

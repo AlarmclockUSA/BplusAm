@@ -44,32 +44,17 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Check for payment status from Stripe
+            // Get ambassador ID from URL
             const urlParams = new URLSearchParams(window.location.search);
-            const paymentIntentId = urlParams.get('payment_intent');
-            const redirectStatus = urlParams.get('redirect_status');
-            
-            // Generate an ambassador ID - either from URL or create a new one
-            let ambassadorId = urlParams.get('id');
-            
-            if (!ambassadorId) {
-                ambassadorId = 'amb_' + Math.random().toString(36).substr(2, 9);
-            }
+            const ambassadorId = urlParams.get('id');
             
             // Display the ambassador ID
-            document.getElementById('ambassador-id').textContent = ambassadorId;
-            
-            // If there was a payment_intent but status is not 'succeeded', show a message
-            if (paymentIntentId && redirectStatus !== 'succeeded') {
-                const statusMsg = document.createElement('div');
-                statusMsg.className = 'bg-yellow-100 border-yellow-400 text-yellow-700 px-4 py-3 rounded relative mb-4';
-                statusMsg.innerHTML = `<p>Payment status: <strong>${redirectStatus || 'pending'}</strong></p>
-                <p>You will receive an email confirmation when your payment is processed.</p>`;
-                
-                document.querySelector('.container > div').insertBefore(
-                    statusMsg, 
-                    document.querySelector('.container > div').firstChild
-                );
+            if (ambassadorId) {
+                document.getElementById('ambassador-id').textContent = ambassadorId;
+            } else {
+                // Generate fallback ID if missing
+                const fallbackId = 'amb_' + Math.random().toString(36).substr(2, 9);
+                document.getElementById('ambassador-id').textContent = fallbackId;
             }
         });
     </script>

@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Brilliant Plus Ambassador Program</title>
-    <script src="https://js.stripe.com/v3/"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -100,20 +99,6 @@
                         </select>
                     </div>
 
-                    <div class="form-group">
-                        <label>Card Information</label>
-                        <div id="card-element" style="padding: 15px; border: 1px solid #e0e0e0; border-radius: 4px; background: white; min-height: 40px; transition: all 0.3s ease;">
-                            <div style="text-align: center; padding: 10px 0;">
-                                <div style="width: 100%; height: 4px; background-color: #f3f3f3; margin-top: 10px; border-radius: 2px; overflow: hidden;">
-                                    <div style="height: 100%; width: 20%; background-color: #7fb69e; animation: loading 1.5s infinite ease-in-out;"></div>
-                                </div>
-                                <p style="margin-top: 10px; color: #888;">Loading payment form...</p>
-                                <p style="margin-top: 20px; color: #888;">Having trouble? <a href="https://buy.stripe.com/test_dR66r35eA6SQ2YgcMN" style="color: #7fb69e; text-decoration: underline;">Click here for direct payment</a></p>
-                            </div>
-                        </div>
-                        <div id="card-errors" role="alert" class="error-message"></div>
-                    </div>
-
                     <button type="submit" id="submit-button">
                         <span id="button-text">Join Now for $10</span>
                         <div id="spinner" class="hidden">
@@ -194,66 +179,7 @@
         }
     </style>
     <script>
-        // Stripe configuration - using the publishable key directly
-        const stripe = Stripe('pk_live_XR5M7XE6egOwx6NnAsCgTzgz00w9tprsTh');
-        let elements;
-        let paymentElement;
-        
-        document.addEventListener('DOMContentLoaded', async () => {
-            try {
-                // Create a payment intent on page load
-                const response = await fetch('/create-payment-intent', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        affiliateData: {
-                            source_url: window.location.href,
-                            referrer: document.referrer
-                        }
-                    }),
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`Server error: ${response.status}`);
-                }
-                
-                const { clientSecret } = await response.json();
-                
-                // Set up Stripe Elements with the client secret
-                elements = stripe.elements({
-                    clientSecret,
-                    appearance: {
-                        theme: 'stripe',
-                        variables: {
-                            colorPrimary: '#7fb69e',
-                        }
-                    }
-                });
-                
-                // Create and mount the Payment Element
-                paymentElement = elements.create('payment');
-                paymentElement.mount('#card-element');
-                
-                // Make the form visible now that Elements is ready
-                document.getElementById('card-element').style.minHeight = '150px';
-                
-                // Set up form validation
-                paymentElement.on('change', (event) => {
-                    const displayError = document.getElementById('card-errors');
-                    if (event.error) {
-                        displayError.textContent = event.error.message;
-                    } else {
-                        displayError.textContent = '';
-                    }
-                });
-            } catch (error) {
-                console.error('Initialization error:', error);
-                document.getElementById('card-errors').textContent = 
-                    'Could not initialize payment form. Please refresh the page or try again later.';
-            }
-            
+        document.addEventListener('DOMContentLoaded', () => {
             // Populate state dropdown
             const stateSelect = document.querySelector("#state");
             if (stateSelect) {
@@ -279,7 +205,7 @@
             }
 
             // Handle form submission
-            document.querySelector("#payment-form").addEventListener("submit", async function(e) {
+            document.querySelector("#payment-form").addEventListener("submit", function(e) {
                 e.preventDefault();
                 
                 // Show loading state
@@ -305,43 +231,35 @@
                     }
                 });
                 
-                try {
-                    // Submit the form and process the payment
-                    const { error } = await stripe.confirmPayment({
-                        elements,
-                        confirmParams: {
-                            // Redirect to the success page after payment
-                            return_url: `${window.location.origin}/success.html`,
-                            payment_method_data: {
-                                billing_details: {
-                                    name: `${formData.firstName} ${formData.lastName}`,
-                                    email: formData.email,
-                                    phone: formData.phone,
-                                    address: {
-                                        line1: formData.street,
-                                        line2: formData.apt || '',
-                                        city: formData.city,
-                                        postal_code: formData.zip,
-                                        country: formData.country,
-                                        state: formData.state
-                                    }
-                                }
-                            }
-                        }
-                    });
-                    
-                    // Handle errors (note: successful payment will redirect)
-                    if (error) {
-                        console.error('Payment error:', error);
-                        document.getElementById('card-errors').textContent = error.message;
+                // Submit the form to the server
+                fetch('/submit-form', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Server error: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        // Redirect to success page
+                        window.location.href = data.redirectUrl;
+                    } else {
+                        // Show error
+                        alert(data.error || 'An error occurred. Please try again.');
                         resetButton();
                     }
-                } catch (err) {
-                    console.error('Submission error:', err);
-                    document.getElementById('card-errors').textContent = 
-                        'An unexpected error occurred. Please try again.';
+                })
+                .catch(error => {
+                    console.error('Submission error:', error);
+                    alert('Sorry, there was a problem processing your request. Please try again.');
                     resetButton();
-                }
+                });
                 
                 function resetButton() {
                     submitButton.disabled = false;
