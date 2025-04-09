@@ -120,15 +120,18 @@ app.post('/create-payment-intent', async (req, res) => {
     console.log('Creating payment intent');
     const { affiliateData } = req.body;
     
-    // Use a direct fixed amount instead of retrieving a price
-    const amount = 1000; // $10.00 in cents
-    const currency = 'usd';
+    // Correct price ID without the 'z' at the end
+    const priceId = 'price_1RBgAMEWsQ0IpmHOfLYH1MPt';
+    console.log(`Retrieving price from Stripe with ID: ${priceId}`);
     
-    console.log(`Creating payment intent with fixed amount: ${amount} ${currency}`);
+    // Retrieve the price
+    const price = await stripe.prices.retrieve(priceId);
+    console.log(`Price retrieved: ${price.unit_amount} ${price.currency}`);
     
+    // Create the payment intent with the price
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: amount,
-      currency: currency,
+      amount: price.unit_amount,
+      currency: price.currency,
       automatic_payment_methods: {
         enabled: true,
       },
