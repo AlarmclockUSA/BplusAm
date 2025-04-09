@@ -114,4 +114,7 @@
 3. Improved error handling for price retrieval in the server.js file
 4. Added additional validation for the STRIPE_PRICE_ID environment variable
 5. Fixed JSON parsing error in payment intent request with improved error handling
-6. Added specific domain URL checks for different environments 
+6. Added specific domain URL checks for different environments
+7. Bypassed payment intent flow on production to use direct form submission
+8. Implemented token-based approach using Stripe's createToken method for more robust card capture
+9. Added multiple fallback mechanisms to ensure the form works in all environments 
