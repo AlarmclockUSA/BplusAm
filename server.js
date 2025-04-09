@@ -8,19 +8,19 @@ const path = require('path');
 const app = express();
 const port = process.env.PORT || 3003;
 
-// Set up EJS
-app.engine('html', require('ejs').renderFile);
-app.set('view engine', 'html');
-app.set('views', path.join(__dirname, 'public'));
-
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static('public'));
 
+// Set up EJS after middleware
+app.engine('html', require('ejs').renderFile);
+app.set('view engine', 'html');
+app.set('views', path.join(__dirname, 'public'));
+
 // Serve index.html with environment variables
 app.get('/', (req, res) => {
-  res.render('index.html', {
+  res.render('index', {
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   });
 });

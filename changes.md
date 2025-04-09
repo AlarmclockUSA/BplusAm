@@ -90,6 +90,7 @@
 7. Created success.html page for successful payments
 8. Added Tailwind CSS for styling and responsive design
 9. Added 'Ambassador Only Funnel' source to Stripe payment metadata
+10. Fixed server.js template configuration for proper HTML rendering
 
 ## Stripe Integration Changes
 1. Added Stripe publishable key as EJS variable in index.html
