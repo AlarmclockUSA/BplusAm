@@ -91,7 +91,15 @@ async function initializeStripe() {
     try {
         // Fetch configuration from server
         const response = await fetch('/api/config');
+        if (!response.ok) {
+            throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+        }
+        
         const config = await response.json();
+        
+        if (!config.stripePublishableKey) {
+            throw new Error('Stripe publishable key is missing');
+        }
 
         // Initialize Stripe with publishable key
         stripe = Stripe(config.stripePublishableKey);
@@ -134,7 +142,9 @@ async function initializeStripe() {
         });
     } catch (error) {
         console.error('Failed to initialize Stripe:', error);
-        document.getElementById('card-errors').textContent = 'Failed to initialize payment system. Please try again later.';
+        const errorElement = document.getElementById('card-errors');
+        errorElement.textContent = `Payment system error: ${error.message}. Please try again later or contact support.`;
+        errorElement.style.color = '#ff4444';
     }
 }
 

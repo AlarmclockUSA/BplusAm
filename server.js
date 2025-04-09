@@ -90,11 +90,32 @@ app.post('/api/create-payment', async (req, res) => {
 
 // Add endpoint to get configuration
 app.get('/api/config', (req, res) => {
-    res.json({
-        stripePublishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
-        priceId: process.env.STRIPE_PRICE_ID,
-        environment: NODE_ENV
-    });
+    try {
+        const config = {
+            stripePublishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+            priceId: process.env.STRIPE_PRICE_ID,
+            environment: NODE_ENV
+        };
+
+        // Log the config (without sensitive data)
+        console.log('Serving config:', {
+            hasPublishableKey: !!config.stripePublishableKey,
+            hasPriceId: !!config.priceId,
+            environment: config.environment
+        });
+
+        if (!config.stripePublishableKey || !config.priceId) {
+            throw new Error('Missing required Stripe configuration');
+        }
+
+        res.json(config);
+    } catch (error) {
+        console.error('Config endpoint error:', error);
+        res.status(500).json({
+            error: 'Failed to load configuration',
+            details: error.message
+        });
+    }
 });
 
 app.listen(PORT, () => {
