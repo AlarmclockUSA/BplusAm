@@ -91,6 +91,9 @@
 8. Added Tailwind CSS for styling and responsive design
 9. Added 'Ambassador Only Funnel' source to Stripe payment metadata
 10. Fixed server.js template configuration for proper HTML rendering
+11. Restored original design while maintaining Stripe integration
+12. Enhanced form functionality with full address collection and state dropdown
+13. Updated Stripe theme colors to match design
 
 ## Stripe Integration Changes
 1. Added Stripe publishable key as EJS variable in index.html

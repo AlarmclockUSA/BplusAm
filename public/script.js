@@ -2,7 +2,7 @@
 const stripe = Stripe(window.stripePublishableKey);
 
 let elements;
-let emailAddress = '';
+let formData = {};
 
 // Get affiliate data from URL parameters
 const getAffiliateData = () => {
@@ -30,7 +30,8 @@ const initialize = async () => {
     const appearance = {
         theme: 'stripe',
         variables: {
-            colorPrimary: '#2563eb',
+            colorPrimary: '#7fb69e',
+            fontFamily: 'Inter, system-ui, sans-serif',
         },
     };
 
@@ -40,19 +41,56 @@ const initialize = async () => {
     paymentElement.mount("#payment-element");
 };
 
+// Collect form data
+const collectFormData = () => {
+    const fields = [
+        'firstName',
+        'lastName',
+        'email',
+        'phone',
+        'street',
+        'apt',
+        'city',
+        'zip',
+        'country',
+        'state'
+    ];
+
+    fields.forEach(field => {
+        const element = document.getElementById(field);
+        if (element) {
+            formData[field] = element.value;
+        }
+    });
+};
+
 // Handle form submission
 const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    const emailInput = document.querySelector("#email");
-    emailAddress = emailInput.value;
+    collectFormData();
 
     const { error } = await stripe.confirmPayment({
         elements,
         confirmParams: {
             return_url: `${window.location.origin}/success.html`,
-            receipt_email: emailAddress,
+            receipt_email: formData.email,
+            payment_method_data: {
+                billing_details: {
+                    name: `${formData.firstName} ${formData.lastName}`,
+                    email: formData.email,
+                    phone: formData.phone,
+                    address: {
+                        line1: formData.street,
+                        line2: formData.apt,
+                        city: formData.city,
+                        postal_code: formData.zip,
+                        country: formData.country,
+                        state: formData.state
+                    }
+                }
+            }
         },
     });
 
@@ -97,4 +135,26 @@ const showMessage = (messageText) => {
 document.addEventListener('DOMContentLoaded', () => {
     initialize();
     document.querySelector("#payment-form").addEventListener("submit", handleSubmit);
+
+    // Populate state dropdown
+    const stateSelect = document.querySelector("#state");
+    const states = {
+        'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas', 'CA': 'California',
+        'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware', 'FL': 'Florida', 'GA': 'Georgia',
+        'HI': 'Hawaii', 'ID': 'Idaho', 'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa',
+        'KS': 'Kansas', 'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine', 'MD': 'Maryland',
+        'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota', 'MS': 'Mississippi', 'MO': 'Missouri',
+        'MT': 'Montana', 'NE': 'Nebraska', 'NV': 'Nevada', 'NH': 'New Hampshire', 'NJ': 'New Jersey',
+        'NM': 'New Mexico', 'NY': 'New York', 'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio',
+        'OK': 'Oklahoma', 'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island', 'SC': 'South Carolina',
+        'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 'UT': 'Utah', 'VT': 'Vermont',
+        'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming'
+    };
+
+    Object.entries(states).forEach(([code, name]) => {
+        const option = document.createElement('option');
+        option.value = code;
+        option.textContent = name;
+        stateSelect.appendChild(option);
+    });
 }); 
