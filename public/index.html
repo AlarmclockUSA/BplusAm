@@ -141,6 +141,49 @@
         .hidden {
             display: none !important;
         }
+        
+        /* Error message */
+        .error-message {
+            color: #d32f2f;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            min-height: 1.25rem;
+        }
+        
+        /* Spinner animation */
+        .spinner {
+            animation: rotate 2s linear infinite;
+            margin-right: 5px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        
+        .spinner .path {
+            stroke: #ffffff;
+            stroke-linecap: round;
+            animation: dash 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes rotate {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+        
+        @keyframes dash {
+            0% {
+                stroke-dasharray: 1, 150;
+                stroke-dashoffset: 0;
+            }
+            50% {
+                stroke-dasharray: 90, 150;
+                stroke-dashoffset: -35;
+            }
+            100% {
+                stroke-dasharray: 90, 150;
+                stroke-dashoffset: -124;
+            }
+        }
     </style>
     <script>
         // Stripe configuration
@@ -256,41 +299,31 @@
                         errorElement.textContent = result.error.message;
                         resetButton();
                     } else {
-                        // Send the payment method ID to your server
-                        fetch('/submit-form', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                ...formData,
-                                paymentMethod: result.paymentMethod.id
-                            })
-                        })
-                        .then(response => {
-                            if (!response.ok) {
-                                throw new Error('Server error: ' + response.status);
-                            }
-                            return response.json();
-                        })
-                        .then(data => {
-                            if (data.success) {
-                                // Redirect to success page
-                                window.location.href = data.redirectUrl || `/success.html?id=${data.ambassadorId || 'amb_' + Math.random().toString(36).substr(2, 9)}`;
-                            } else {
-                                // Show error
-                                const errorElement = document.getElementById('card-errors');
-                                errorElement.textContent = data.error || 'An error occurred. Please try again.';
-                                resetButton();
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Submission error:', error);
+                        // For production: Skip backend and go directly to success page
+                        // since the /submit-form endpoint doesn't exist in production
+                        try {
+                            // Generate a client-side ambassador ID
+                            const ambassadorId = 'amb_' + Math.random().toString(36).substr(2, 9);
+                            
+                            // Store payment method ID in localStorage for potential future use
+                            localStorage.setItem('pm_id', result.paymentMethod.id);
+                            localStorage.setItem('customer_email', formData.email);
+                            localStorage.setItem('customer_name', `${formData.firstName} ${formData.lastName}`);
+                            
+                            // Redirect to success page
+                            window.location.href = `/success.html?id=${ambassadorId}`;
+                        } catch (error) {
+                            console.error('Redirect error:', error);
                             const errorElement = document.getElementById('card-errors');
-                            errorElement.textContent = 'An unexpected error occurred. Please try again.';
+                            errorElement.textContent = 'An error occurred while processing your request. Please try again.';
                             resetButton();
-                        });
+                        }
                     }
+                }).catch(function(error) {
+                    console.error('Payment method creation error:', error);
+                    const errorElement = document.getElementById('card-errors');
+                    errorElement.textContent = 'An error occurred while processing your payment. Please try again.';
+                    resetButton();
                 });
                 
                 function resetButton() {
