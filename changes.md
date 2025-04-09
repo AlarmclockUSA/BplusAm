@@ -112,4 +112,6 @@
 1. Hardcoded Stripe publishable key directly in script.js instead of fetching from server
 2. Added URL handling to create-payment-intent endpoint to work in both local and production environments
 3. Improved error handling for price retrieval in the server.js file
-4. Added additional validation for the STRIPE_PRICE_ID environment variable 
+4. Added additional validation for the STRIPE_PRICE_ID environment variable
+5. Fixed JSON parsing error in payment intent request with improved error handling
+6. Added specific domain URL checks for different environments 
