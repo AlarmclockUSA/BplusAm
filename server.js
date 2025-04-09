@@ -114,6 +114,40 @@ app.post('/submit-form', async (req, res) => {
   }
 });
 
+// Create payment intent
+app.post('/create-payment-intent', async (req, res) => {
+  try {
+    console.log('Creating payment intent');
+    const { affiliateData } = req.body;
+    
+    // Use a direct fixed amount instead of retrieving a price
+    const amount = 1000; // $10.00 in cents
+    const currency = 'usd';
+    
+    console.log(`Creating payment intent with fixed amount: ${amount} ${currency}`);
+    
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amount,
+      currency: currency,
+      automatic_payment_methods: {
+        enabled: true,
+      },
+      metadata: {
+        source: 'Ambassador Only Funnel',
+        source_url: affiliateData?.source_url || 'direct'
+      }
+    });
+    
+    console.log(`Payment intent created with ID: ${paymentIntent.id}`);
+    res.json({
+      clientSecret: paymentIntent.client_secret
+    });
+  } catch (error) {
+    console.error('Error creating payment intent:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 }); 
