@@ -7,7 +7,7 @@ const path = require('path');
 const fs = require('fs');
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 3003;
 
 // Enhanced CORS configuration
 app.use(cors({
@@ -42,16 +42,30 @@ if (!fs.existsSync(indexPath)) {
 }
 
 // Serve static files from public directory with absolute path
-app.use(express.static(publicDir));
+app.use('/', express.static(path.join(__dirname, 'public')));
 
-// Serve index.html for root route
+// Serve index.html for root route with explicit check
 app.get('/', (req, res) => {
+  const indexPath = path.join(__dirname, 'public', 'index.html');
+  console.log(`Attempting to serve index.html from: ${indexPath}`);
+  
   if (fs.existsSync(indexPath)) {
-    console.log(`Serving index.html from: ${indexPath}`);
+    console.log(`File exists, serving index.html`);
     res.sendFile(indexPath);
   } else {
-    console.error(`CRITICAL ERROR: Could not find ${indexPath}`);
-    res.status(500).send('Server configuration error. Please contact support.');
+    console.error(`ERROR: Could not find ${indexPath}`);
+    // Create a simple HTML response
+    res.send(`
+      <html>
+        <head><title>Error</title></head>
+        <body>
+          <h1>Server Configuration Error</h1>
+          <p>The application is having trouble finding the required files.</p>
+          <p>Please contact support or try again later.</p>
+          <p>Missing file: ${indexPath}</p>
+        </body>
+      </html>
+    `);
   }
 });
 
@@ -120,18 +134,13 @@ app.post('/create-payment-intent', async (req, res) => {
     console.log('Creating payment intent');
     const { affiliateData } = req.body;
     
-    // Correct price ID without the 'z' at the end
-    const priceId = 'price_1RBgAMEWsQ0IpmHOfLYH1MPt';
-    console.log(`Retrieving price from Stripe with ID: ${priceId}`);
+    // Hard-coded amount approach instead of using price ID
+    console.log('Using hard-coded amount for payment');
     
-    // Retrieve the price
-    const price = await stripe.prices.retrieve(priceId);
-    console.log(`Price retrieved: ${price.unit_amount} ${price.currency}`);
-    
-    // Create the payment intent with the price
+    // Create the payment intent with fixed amount
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: price.unit_amount,
-      currency: price.currency,
+      amount: 1000, // $10.00 in cents
+      currency: 'usd',
       automatic_payment_methods: {
         enabled: true,
       },
@@ -149,6 +158,11 @@ app.post('/create-payment-intent', async (req, res) => {
     console.error('Error creating payment intent:', error);
     res.status(500).json({ error: error.message });
   }
+});
+
+// Serve Stripe publishable key - simple endpoint
+app.get('/stripe-key', (req, res) => {
+  res.json({ key: 'pk_live_XR5M7XE6egOwx6NnAsCgTzgz00w9tprsTh' });
 });
 
 app.listen(port, () => {
