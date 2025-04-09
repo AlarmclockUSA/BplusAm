@@ -94,120 +94,122 @@ function storeUrlParameters() {
     };
 }
 
-// Initialize Stripe
-const stripe = Stripe('pk_live_XR5M7XE6egOwx6NnAsCgTzgz00w9tprsTh');
+// Initialize Stripe with key from environment
+const stripe = Stripe(stripePublishableKey); // This should be set in your HTML file
 const elements = stripe.elements();
 
 // Store URL parameters on page load
 const affiliateParams = storeUrlParameters();
 
-// Populate state dropdown on page load
-document.addEventListener('DOMContentLoaded', populateStateDropdown);
-
-// Create card Element
-const card = elements.create('card', {
-    style: {
-        base: {
-            color: '#32325d',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-            fontSmoothing: 'antialiased',
-            fontSize: '16px',
-            '::placeholder': {
-                color: '#aab7c4'
-            }
-        },
-        invalid: {
-            color: '#dc3545',
-            iconColor: '#dc3545'
-        }
-    }
-});
-
-// Mount the card Element
-card.mount('#card-element');
-
-// Handle real-time validation errors
-card.addEventListener('change', function(event) {
-    const displayError = document.getElementById('card-errors');
-    if (event.error) {
-        displayError.textContent = event.error.message;
-    } else {
-        displayError.textContent = '';
-    }
-});
-
-// Handle form submission
-const form = document.getElementById('payment-form');
-form.addEventListener('submit', async function(event) {
-    event.preventDefault();
-
-    // Disable the submit button
-    const submitButton = document.getElementById('submit-button');
-    submitButton.disabled = true;
-
-    try {
-        // Create payment intent with affiliate data
-        const response = await fetch('/create-payment-intent', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                affiliateData: affiliateParams
-            })
-        });
-
-        const { clientSecret } = await response.json();
-
-        // Get the state abbreviation
-        const stateSelect = document.getElementById('state');
-        const stateValue = stateSelect.value; // This will be the abbreviation
-
-        // Confirm the payment
-        const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-            payment_method: {
-                card: card,
-                billing_details: {
-                    name: document.getElementById('firstName').value + ' ' + document.getElementById('lastName').value,
-                    email: document.getElementById('email').value,
-                    phone: document.getElementById('phone').value,
-                    address: {
-                        line1: document.getElementById('street').value,
-                        city: document.getElementById('city').value,
-                        state: stateValue, // Using the abbreviation
-                        postal_code: document.getElementById('zip').value
-                    }
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', async () => {
+    populateStateDropdown();
+    
+    // Create card Element
+    const card = elements.create('card', {
+        style: {
+            base: {
+                color: '#32325d',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                fontSmoothing: 'antialiased',
+                fontSize: '16px',
+                '::placeholder': {
+                    color: '#aab7c4'
                 }
+            },
+            invalid: {
+                color: '#dc3545',
+                iconColor: '#dc3545'
             }
-        });
+        }
+    });
 
-        if (error) {
-            // Show error to customer
-            const errorElement = document.getElementById('card-errors');
-            errorElement.textContent = error.message;
-            submitButton.disabled = false;
+    // Mount the card Element
+    card.mount('#card-element');
+
+    // Handle real-time validation errors
+    card.addEventListener('change', function(event) {
+        const displayError = document.getElementById('card-errors');
+        if (event.error) {
+            displayError.textContent = event.error.message;
         } else {
-            // Payment successful - include affiliate data
-            const successResponse = await fetch('/payment-success', {
+            displayError.textContent = '';
+        }
+    });
+
+    // Handle form submission
+    const form = document.getElementById('payment-form');
+    form.addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        // Disable the submit button
+        const submitButton = document.getElementById('submit-button');
+        submitButton.disabled = true;
+
+        try {
+            // Create payment intent with affiliate data
+            const response = await fetch('/create-payment-intent', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ 
-                    paymentIntent,
+                body: JSON.stringify({
                     affiliateData: affiliateParams
                 })
             });
-            
-            const { redirectUrl } = await successResponse.json();
-            
-            // Redirect to success page
-            window.location.href = redirectUrl;
+
+            const { clientSecret } = await response.json();
+
+            // Get the state abbreviation
+            const stateSelect = document.getElementById('state');
+            const stateValue = stateSelect.value;
+
+            // Confirm the payment
+            const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+                payment_method: {
+                    card: card,
+                    billing_details: {
+                        name: document.getElementById('firstName').value + ' ' + document.getElementById('lastName').value,
+                        email: document.getElementById('email').value,
+                        phone: document.getElementById('phone').value,
+                        address: {
+                            line1: document.getElementById('street').value,
+                            city: document.getElementById('city').value,
+                            state: stateValue,
+                            postal_code: document.getElementById('zip').value
+                        }
+                    }
+                }
+            });
+
+            if (error) {
+                // Show error to customer
+                const errorElement = document.getElementById('card-errors');
+                errorElement.textContent = error.message;
+                submitButton.disabled = false;
+            } else {
+                // Payment successful - include affiliate data
+                const successResponse = await fetch('/payment-success', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        paymentIntent,
+                        affiliateData: affiliateParams
+                    })
+                });
+                
+                const { redirectUrl } = await successResponse.json();
+                
+                // Redirect to success page
+                window.location.href = redirectUrl;
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            const errorElement = document.getElementById('card-errors');
+            errorElement.textContent = 'An error occurred. Please try again.';
+            submitButton.disabled = false;
         }
-    } catch (error) {
-        console.error('Error:', error);
-        const errorElement = document.getElementById('card-errors');
-        errorElement.textContent = 'An error occurred. Please try again.';
-        submitButton.disabled = false;
-    }
+    });
 }); 

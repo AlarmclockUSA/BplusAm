@@ -1,8 +1,7 @@
 # Dependencies
 /node_modules
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+/.pnp
+.pnp.js
 
 # Environment variables
 .env
@@ -10,6 +9,12 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+.env*
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # IDE
 .idea/
@@ -19,4 +24,9 @@ yarn-error.log*
 
 # OS
 .DS_Store
-Thumbs.db 
+Thumbs.db
+
+# Config files with sensitive data
+*config.js
+!*config.example.js
+!*config.template.js 

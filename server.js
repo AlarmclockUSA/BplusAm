@@ -4,6 +4,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const port = process.env.PORT || 3003;
@@ -11,7 +12,26 @@ const port = process.env.PORT || 3003;
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static('public'));
+
+// Serve index.html with injected environment variables
+app.get('/', (req, res) => {
+  const indexPath = path.join(__dirname, 'public', 'index.html');
+  fs.readFile(indexPath, 'utf8', (err, data) => {
+    if (err) {
+      console.error('Error reading index.html:', err);
+      return res.status(500).send('Error loading page');
+    }
+    
+    // Inject the Stripe publishable key
+    const html = data.replace(
+      '<script>',
+      `<script>const stripePublishableKey = '${process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}';`
+    );
+    
+    res.send(html);
+  });
+});
 
 // Handle successful payment and redirect
 app.post('/payment-success', async (req, res) => {
@@ -40,15 +60,19 @@ app.post('/create-payment-intent', async (req, res) => {
   try {
     const { affiliateData } = req.body;
     
+    // Get the price from Stripe
+    const price = await stripe.prices.retrieve(process.env.STRIPE_PRICE_ID);
+    
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: 1000, // Amount in cents
-      currency: 'usd',
+      amount: price.unit_amount, // Use the amount from the price object
+      currency: price.currency,
       automatic_payment_methods: {
         enabled: true,
       },
       metadata: {
         ...affiliateData,
-        source_url: affiliateData.source_url || 'direct'
+        source_url: affiliateData.source_url || 'direct',
+        price_id: process.env.STRIPE_PRICE_ID
       }
     });
 
@@ -56,13 +80,14 @@ app.post('/create-payment-intent', async (req, res) => {
       clientSecret: paymentIntent.client_secret,
     });
   } catch (error) {
+    console.error('Error creating payment intent:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Serve the payment page for all routes
+// Serve static files for other routes
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', req.path));
 });
 
 app.listen(port, () => {
