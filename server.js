@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const path = require('path');
 const fs = require('fs');
 
@@ -42,6 +43,11 @@ if (!fs.existsSync(indexPath)) {
 
 // Serve static files from public directory with absolute path
 app.use('/', express.static(path.join(__dirname, 'public')));
+
+// Endpoint to expose the publishable key
+app.get('/stripe-key', (req, res) => {
+  res.json({ publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY });
+});
 
 // Serve index.html for root route with explicit check
 app.get('/', (req, res) => {
@@ -85,6 +91,42 @@ app.post('/submit-form', async (req, res) => {
   } catch (error) {
     console.error('Error processing form submission:', error);
     res.status(500).json({ error: 'An error occurred while processing your request.' });
+  }
+});
+
+// Create payment intent
+app.post('/create-payment-intent', async (req, res) => {
+  try {
+    console.log('Creating payment intent');
+    const { affiliateData } = req.body;
+    
+    // Use the price ID from environment variables
+    const priceId = process.env.STRIPE_PRICE_ID;
+    console.log(`Using price ID: ${priceId}`);
+    
+    // Retrieve the price to get the amount
+    const price = await stripe.prices.retrieve(priceId);
+    
+    // Create a payment intent with the price
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: price.unit_amount,
+      currency: price.currency,
+      automatic_payment_methods: {
+        enabled: true,
+      },
+      metadata: {
+        source: 'Ambassador Only Funnel',
+        source_url: affiliateData?.source_url || 'direct'
+      }
+    });
+    
+    console.log(`Payment intent created with ID: ${paymentIntent.id}`);
+    res.json({
+      clientSecret: paymentIntent.client_secret
+    });
+  } catch (error) {
+    console.error('Error creating payment intent:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

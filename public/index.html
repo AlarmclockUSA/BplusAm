@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Brilliant Plus Ambassador Program</title>
+    <script src="https://js.stripe.com/v3/"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -99,6 +100,12 @@
                         </select>
                     </div>
 
+                    <div class="form-group">
+                        <label>Card Information</label>
+                        <div id="card-element" style="padding: 12px; border: 1px solid #e0e0e0; border-radius: 4px; background: white; min-height: 20px;"></div>
+                        <div id="card-errors" role="alert" class="error-message"></div>
+                    </div>
+
                     <button type="submit" id="submit-button">
                         <span id="button-text">Join Now for $10</span>
                         <div id="spinner" class="hidden">
@@ -178,96 +185,6 @@
             }
         }
     </style>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // Populate state dropdown
-            const stateSelect = document.querySelector("#state");
-            if (stateSelect) {
-                const states = {
-                    'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas', 'CA': 'California',
-                    'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware', 'FL': 'Florida', 'GA': 'Georgia',
-                    'HI': 'Hawaii', 'ID': 'Idaho', 'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa',
-                    'KS': 'Kansas', 'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine', 'MD': 'Maryland',
-                    'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota', 'MS': 'Mississippi', 'MO': 'Missouri',
-                    'MT': 'Montana', 'NE': 'Nebraska', 'NV': 'Nevada', 'NH': 'New Hampshire', 'NJ': 'New Jersey',
-                    'NM': 'New Mexico', 'NY': 'New York', 'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio',
-                    'OK': 'Oklahoma', 'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island', 'SC': 'South Carolina',
-                    'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 'UT': 'Utah', 'VT': 'Vermont',
-                    'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming'
-                };
-
-                Object.entries(states).forEach(([code, name]) => {
-                    const option = document.createElement('option');
-                    option.value = code;
-                    option.textContent = name;
-                    stateSelect.appendChild(option);
-                });
-            }
-
-            // Handle form submission
-            document.querySelector("#payment-form").addEventListener("submit", function(e) {
-                e.preventDefault();
-                
-                // Show loading state
-                const submitButton = document.querySelector("#submit-button");
-                const spinner = document.querySelector("#spinner");
-                const buttonText = document.querySelector("#button-text");
-                
-                // Prevent double-submissions
-                if (submitButton.disabled) {
-                    return;
-                }
-                
-                submitButton.disabled = true;
-                spinner.classList.remove("hidden");
-                buttonText.classList.add("hidden");
-                
-                // Collect form data
-                const formData = {};
-                ['firstName', 'lastName', 'email', 'phone', 'street', 'apt', 'city', 'zip', 'country', 'state'].forEach(field => {
-                    const element = document.getElementById(field);
-                    if (element) {
-                        formData[field] = element.value;
-                    }
-                });
-                
-                // Submit the form to the server
-                fetch('/submit-form', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(formData)
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Server error: ' + response.status);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.success) {
-                        // Redirect to success page
-                        window.location.href = data.redirectUrl;
-                    } else {
-                        // Show error
-                        alert(data.error || 'An error occurred. Please try again.');
-                        resetButton();
-                    }
-                })
-                .catch(error => {
-                    console.error('Submission error:', error);
-                    alert('Sorry, there was a problem processing your request. Please try again.');
-                    resetButton();
-                });
-                
-                function resetButton() {
-                    submitButton.disabled = false;
-                    spinner.classList.add("hidden");
-                    buttonText.classList.remove("hidden");
-                }
-            });
-        });
-    </script>
+    <script src="script.js"></script>
 </body>
 </html> 
