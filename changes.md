@@ -74,3 +74,8 @@
     - Clear visual hierarchy
     - Improved readability
     - Enhanced mobile experience 
+
+## Git Repository Configuration
+- [Date: Current] Updated remote repository configuration:
+  - Changed remote origin URL from https://github.com/AlarmclockUSA/BplusAm.git to https://github.com/AlarmclockUSA/BAF.git
+  - Verified successful update of remote URL 
