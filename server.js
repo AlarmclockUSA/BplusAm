@@ -12,7 +12,9 @@ const port = process.env.PORT || 3003;
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
-app.use(express.static('public'));
+
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Serve index.html with injected environment variables
 app.get('/', (req, res) => {
@@ -85,9 +87,16 @@ app.post('/create-payment-intent', async (req, res) => {
   }
 });
 
-// Serve static files for other routes
+// Catch-all route to serve index.html for client-side routing
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', req.path));
+  // First try to serve the actual file
+  const filePath = path.join(__dirname, 'public', req.path);
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    // If file doesn't exist, serve index.html for client-side routing
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  }
 });
 
 app.listen(port, () => {
