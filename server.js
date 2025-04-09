@@ -25,10 +25,10 @@ app.get('/', (req, res) => {
       return res.status(500).send('Error loading page');
     }
     
-    // Inject the Stripe publishable key
+    // Inject the Stripe publishable key before the app.js script
     const html = data.replace(
-      '<script>',
-      `<script>const stripePublishableKey = '${process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}';`
+      '<script src="app.js"></script>',
+      `<script>window.stripePublishableKey = '${process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}';</script>\n    <script src="app.js"></script>`
     );
     
     res.send(html);

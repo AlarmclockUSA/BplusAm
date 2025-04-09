@@ -62,6 +62,8 @@ const states = {
 // Populate state dropdown
 function populateStateDropdown() {
     const stateSelect = document.getElementById('state');
+    if (!stateSelect) return; // Guard against missing element
+    
     stateSelect.innerHTML = '<option value="">Select a state</option>';
     
     Object.entries(states).forEach(([abbr, name]) => {
@@ -94,16 +96,22 @@ function storeUrlParameters() {
     };
 }
 
-// Initialize Stripe with key from environment
-const stripe = Stripe(stripePublishableKey); // This should be set in your HTML file
-const elements = stripe.elements();
-
 // Store URL parameters on page load
 const affiliateParams = storeUrlParameters();
 
 // Initialize on page load
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
+    // Populate states immediately
     populateStateDropdown();
+    
+    // Initialize Stripe once we have the key
+    if (!window.stripePublishableKey) {
+        console.error('Stripe publishable key not found');
+        return;
+    }
+    
+    const stripe = Stripe(window.stripePublishableKey);
+    const elements = stripe.elements();
     
     // Create card Element
     const card = elements.create('card', {
